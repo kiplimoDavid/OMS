@@ -103,7 +103,7 @@ class User(UserMixin, db.Model):
     )
 
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(64), nullable=False, unique=True)
+    username = db.Column(db.String(100), nullable=False, unique=True)
     email = db.Column(db.String(120), nullable=False, unique=True)
     password_hash = db.Column(db.String(128))
     role = db.Column(CaseInsensitiveEnum(RoleEnum), default=RoleEnum.CUSTOMER, nullable=False)
@@ -172,7 +172,7 @@ class Vendor(db.Model):
     name = db.Column(db.String(100), unique=True, nullable=False)  # Ensure unique
     contact_name = db.Column(db.String(100))
     contact_email = db.Column(db.String(120))
-    contact_phone = db.Column(db.String(20))
+    contact_phone = db.Column(db.String(100))
     address = db.Column(db.Text)
     website = db.Column(db.String(200))
     rating = db.Column(db.Float)
@@ -196,9 +196,9 @@ class Customer(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), unique=True)
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(120), unique=True)
-    phone = db.Column(db.String(20))
+    phone = db.Column(db.String(100))
     company = db.Column(db.String(100))
-    tax_id = db.Column(db.String(50))
+    tax_id = db.Column(db.String(100))
     notes = db.Column(db.Text)
     loyalty_points = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -240,13 +240,13 @@ class ShippingAddress(db.Model):
     recipient_name = db.Column(db.String(100), nullable=False)
     street = db.Column(db.String(255), nullable=False)
     city = db.Column(db.String(100), nullable=False)
-    state = db.Column(db.String(50), nullable=False)
-    zip_code = db.Column(db.String(20), nullable=False)
+    state = db.Column(db.String(100), nullable=False)
+    zip_code = db.Column(db.String(100), nullable=False)
     country = db.Column(db.String(100), default='Kenya')
-    phone = db.Column(db.String(20))
+    phone = db.Column(db.String(100))
     is_primary = db.Column(db.Boolean, default=False)
-    address_type = db.Column(db.String(20))  # 'SHIPPING' or 'BILLING'
-    postal_code = db.Column(db.String(20))   # <- Check if this exists or not
+    address_type = db.Column(db.String(100))  # 'SHIPPING' or 'BILLING'
+    postal_code = db.Column(db.String(100))   # <- Check if this exists or not
     is_default = db.Column(db.Boolean, default=False)
     is_default_shipping = db.Column(db.Boolean, default=False)
     is_default_billing = db.Column(db.Boolean, default=False)  # ADD THIS
@@ -349,7 +349,7 @@ class Product(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     slug = db.Column(db.String(120), unique=True, nullable=False)
-    sku = db.Column(db.String(50), unique=True)
+    sku = db.Column(db.String(100), unique=True)
     price = db.Column(db.Float, nullable=False)
     sale_price = db.Column(db.Float)
     cost_price = db.Column(db.Float)
@@ -361,7 +361,7 @@ class Product(db.Model):
     short_description = db.Column(db.Text)
     specifications = db.Column(db.JSON)  # JSON for key-value specifications
     weight = db.Column(db.Float)  # in kg
-    dimensions = db.Column(db.String(50))  # Format: "LxWxH" in cm
+    dimensions = db.Column(db.String(100))  # Format: "LxWxH" in cm
     is_featured = db.Column(db.Boolean, default=False)
     is_active_user = db.Column(db.Boolean, default=True)
     is_digital = db.Column(db.Boolean, default=False)
@@ -482,7 +482,7 @@ class Order(db.Model):
     tax_amount = db.Column(db.Float, default=0.0, nullable=False)
     discount_amount = db.Column(db.Float, default=0.0)
     total_amount = db.Column(db.Float, default=0.0, nullable=False)
-    payment_method = db.Column(db.String(50))
+    payment_method = db.Column(db.String(100))
     transaction_id = db.Column(db.String(120))
     estimated_delivery = db.Column(db.DateTime)
     actual_delivery = db.Column(db.DateTime)
@@ -600,9 +600,9 @@ class Payment(db.Model):
     method = db.Column(db.String(50), nullable=False)  # M-PESA, Credit Card, etc.
     transaction_id = db.Column(db.String(100), unique=True)
     status = db.Column(CaseInsensitiveEnum(PaymentStatus), default=PaymentStatus.PENDING)
-    payment_gateway = db.Column(db.String(50))
+    payment_gateway = db.Column(db.String(100))
     gateway_response = db.Column(db.JSON)  # Store gateway response data
-    currency = db.Column(db.String(10), default='KES')
+    currency = db.Column(db.String(100), default='KES')
     notes = db.Column(db.Text)
 
     # Relationships
@@ -626,7 +626,7 @@ class Refund(db.Model):
     status = db.Column(CaseInsensitiveEnum(RefundStatus), default=RefundStatus.REQUESTED)
     processed_at = db.Column(db.DateTime)
     processed_by = db.Column(db.Integer, db.ForeignKey('users.id'))
-    refund_method = db.Column(db.String(50))  # Original payment, bank transfer, store credit
+    refund_method = db.Column(db.String(100))  # Original payment, bank transfer, store credit
     bank_account = db.Column(db.JSON)  # Bank details for transfer
     transaction_id = db.Column(db.String(100))
 
@@ -681,7 +681,7 @@ class Coupon(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     code = db.Column(db.String(50), unique=True, nullable=False)
-    discount_type = db.Column(db.String(20), nullable=False)  # percentage, fixed
+    discount_type = db.Column(db.String(100), nullable=False)  # percentage, fixed
     discount_value = db.Column(db.Float, nullable=False)
     valid_from = db.Column(db.DateTime)
     valid_to = db.Column(db.DateTime)
@@ -704,12 +704,12 @@ class Discount(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text)
-    discount_type = db.Column(db.String(20), nullable=False)  # percentage, fixed
+    discount_type = db.Column(db.String(100), nullable=False)  # percentage, fixed
     discount_value = db.Column(db.Float, nullable=False)
     valid_from = db.Column(db.DateTime)
     valid_to = db.Column(db.DateTime)
     is_active_user = db.Column(db.Boolean, default=True)
-    apply_to = db.Column(db.String(20), default='all')  # all, categories, products
+    apply_to = db.Column(db.String(100), default='all')  # all, categories, products
     min_order_value = db.Column(db.Float)
     max_discount = db.Column(db.Float)
     usage_limit = db.Column(db.Integer)
@@ -740,13 +740,13 @@ class Invoice(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=False)
-    invoice_number = db.Column(db.String(50), unique=True, nullable=False)
+    invoice_number = db.Column(db.String(100), unique=True, nullable=False)
     issued_at = db.Column(db.DateTime, default=datetime.utcnow)
     due_date = db.Column(db.DateTime)
     amount = db.Column(db.Float)
     tax_amount = db.Column(db.Float)
     pdf_url = db.Column(db.String(255))
-    status = db.Column(db.String(20), default='UNPAID')  # UNPAID, PAID, PARTIALLY_PAID
+    status = db.Column(db.String(100), default='UNPAID')  # UNPAID, PAID, PARTIALLY_PAID
     notes = db.Column(db.Text)
 
     # Relationships
@@ -811,7 +811,7 @@ class InventoryLog(db.Model):
     change = db.Column(db.Integer, nullable=False)  # Positive for addition, negative for deduction
     description = db.Column(db.Text)
     reference_id = db.Column(db.Integer)  # Order ID, Purchase Order ID, etc.
-    reference_type = db.Column(db.String(50))  # 'order', 'purchase', 'adjustment'
+    reference_type = db.Column(db.String(100))  # 'order', 'purchase', 'adjustment'
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -833,9 +833,9 @@ class PurchaseOrder(db.Model):
     expected_delivery = db.Column(db.DateTime)
     received_date = db.Column(db.DateTime)
     total_amount = db.Column(db.Float)
-    status = db.Column(db.String(20), default='PENDING')  # PENDING, ORDERED, RECEIVED, CANCELLED
+    status = db.Column(db.String(100), default='PENDING')  # PENDING, ORDERED, RECEIVED, CANCELLED
     notes = db.Column(db.Text)
-    po_number = db.Column(db.String(50), unique=True)
+    po_number = db.Column(db.String(100), unique=True)
 
     # Relationships
     vendor = db.relationship('Vendor', back_populates='purchase_orders')
@@ -913,7 +913,7 @@ class TrackingEvent(db.Model):
     location = db.Column(db.String(200))
     status = db.Column(db.String(100))
     description = db.Column(db.Text)
-    event_code = db.Column(db.String(50))  # Standardized event code
+    event_code = db.Column(db.String(100))  # Standardized event code
 
     # Relationships
     shipment = db.relationship('Shipment', back_populates='tracking_events')
@@ -933,8 +933,8 @@ class PaymentMethod(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=False)
-    card_type = db.Column(db.String(50), nullable=False)
-    method_type = db.Column(db.String(50), nullable=False)  # M-PESA, Credit Card, etc.
+    card_type = db.Column(db.String(100), nullable=False)
+    method_type = db.Column(db.String(100), nullable=False)  # M-PESA, Credit Card, etc.
     details = db.Column(db.JSON, nullable=False)  # Store method-specific details
     is_default = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -996,8 +996,8 @@ class SupportTicket(db.Model):
     order_id = db.Column(db.Integer, db.ForeignKey('orders.id'))
     subject = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, nullable=False)
-    status = db.Column(db.String(20), default='OPEN')  # OPEN, IN_PROGRESS, CLOSED
-    priority = db.Column(db.String(20), default='MEDIUM')  # LOW, MEDIUM, HIGH, URGENT
+    status = db.Column(db.String(100), default='OPEN')  # OPEN, IN_PROGRESS, CLOSED
+    priority = db.Column(db.String(100), default='MEDIUM')  # LOW, MEDIUM, HIGH, URGENT
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     closed_at = db.Column(db.DateTime)
     closed_by = db.Column(db.Integer, db.ForeignKey('users.id'))
@@ -1085,10 +1085,10 @@ class AuditLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     action = db.Column(db.String(100), nullable=False)
-    model = db.Column(db.String(50))
+    model = db.Column(db.String(100))
     record_id = db.Column(db.Integer)
     changes = db.Column(db.JSON)  # JSON of {field: [old_value, new_value]}
-    ip_address = db.Column(db.String(50))
+    ip_address = db.Column(db.String(100))
     user_agent = db.Column(db.String(255))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -1103,19 +1103,19 @@ class MpesaTransaction(db.Model):
     __tablename__ = "mpesa_transactions"
 
     id = db.Column(db.Integer, primary_key=True)
-    phone_number = db.Column(db.String(20), nullable=False)
+    phone_number = db.Column(db.String(100), nullable=False)
     amount = db.Column(db.Float, nullable=False)
 
     merchant_request_id = db.Column(db.String(100))
     checkout_request_id = db.Column(db.String(100))
 
-    result_code = db.Column(db.String(10))
+    result_code = db.Column(db.String(100))
     result_desc = db.Column(db.String(255))
 
     mpesa_receipt_number = db.Column(db.String(50))
-    transaction_date = db.Column(db.String(50))
+    transaction_date = db.Column(db.String(100))
 
-    status = db.Column(db.String(20), default="PENDING")
+    status = db.Column(db.String(100), default="PENDING")
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
