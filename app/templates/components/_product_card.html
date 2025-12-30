@@ -1,0 +1,63 @@
+{% macro product_card(product, compact=False, user=None) %}
+<div class="card shadow-sm border-0 {{ 'me-1' if compact else 'w-100' }}"
+     style="min-width: {{ '120px' if compact else 'auto' }};
+            max-width: {{ '160px' if compact else '100%' }};
+            transition: transform 0.2s ease-in-out;
+            margin: 0.5px;">  <!-- Reduced spacing -->
+
+    <!-- Image as View -->
+    <a href="{{ url_for('products.view_product', product_id=product.id) }}">
+        {% if product.image_url %}
+            <img src="{{ product.image_url }}"
+                 class="card-img-top"
+                 alt="{{ product.name }}"
+                 style="height: {{ '100px' if compact else '180px' }};
+                        object-fit: cover;">
+        {% else %}
+            <img src="{{ url_for('static', filename='img/no-image.png') }}"
+                 class="card-img-top"
+                 alt="No Image"
+                 style="height: {{ '100px' if compact else '180px' }};
+                        object-fit: cover;">
+        {% endif %}
+    </a>
+
+    <!-- Product Info -->
+    <div class="card-body p-2 d-flex flex-column text-center">
+        <h6 class="card-title mb-1 text-truncate" style="font-size: 0.85rem;">{{ product.name }}</h6>
+
+        <span class="fw-bold text-success" style="font-size: 0.85rem;">
+            Ksh {{ "%.2f"|format(product.price) }}
+        </span>
+
+        <!-- Stock badge -->
+        {% if product.stock_quantity > 0 %}
+            <span class="badge rounded-pill bg-success mb-2">In Stock</span>
+        {% else %}
+            <span class="badge rounded-pill bg-secondary mb-2">Out of Stock</span>
+        {% endif %}
+
+        <!-- Action Buttons -->
+        <div class="mt-auto">
+            {% if user and user.is_authenticated %}
+                {% if user.is_admin() or user.is_staff() %}
+                    {% if not compact %}
+                        <a href="{{ url_for('products.edit_product', product_id=product.id) }}"
+                           class="btn btn-sm btn-outline-secondary w-100">
+                            Edit
+                        </a>
+                    {% endif %}
+                {% else %}
+                    {% if product.stock_quantity > 0 %}
+                        <form action="{{ url_for('cart.add_to_cart', product_id=product.id) }}" method="POST">
+                            <button type="submit" class="btn btn-sm btn-warning w-100 text-dark">
+                                Add to Cart
+                            </button>
+                        </form>
+                    {% endif %}
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endmacro %}

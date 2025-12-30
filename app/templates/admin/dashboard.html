@@ -1,0 +1,48 @@
+
+{% extends 'base.html' %}
+{% block title %}Admin Dashboard{% endblock %}
+{% block content %}
+<h2 class="mb-4">Admin Dashboard</h2>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">Products ({{ products|length }})</div>
+            <div class="card-body">
+                <ul class="list-unstyled">
+                    {% for product in products[:5] %}
+                    <li>{{ product.name }} - ${{ product.price }}</li>
+                    {% endfor %}
+                </ul>
+                <a href="#" class="btn btn-sm btn-outline-primary">Manage Products</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">Orders ({{ orders|length }})</div>
+            <div class="card-body">
+                <ul class="list-unstyled">
+                    {% for order in orders[:5] %}
+                    <li>Order #{{ order.id }} - {{ order.status.name }}</li>
+                    {% endfor %}
+                </ul>
+                <a href="#" class="btn btn-sm btn-outline-primary">Manage Orders</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">Users ({{ users|length }})</div>
+            <div class="card-body">
+                <ul class="list-unstyled">
+                    {% for user in users[:5] %}
+                    <li>{{ user.username }} - {{ user.role.name }}</li>
+                    {% endfor %}
+                </ul>
+                <a href="#" class="btn btn-sm btn-outline-primary">Manage Users</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}Your Cart{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <h2 class="mb-4">Shopping Cart</h2>
+
+    {% if cart_items %}
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive mb-4">
+                <table class="table align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col">Product</th>
+                            <th scope="col" class="text-center">Qty</th>
+                            <th scope="col" class="text-end">Unit Price</th>
+                            <th scope="col" class="text-end">Subtotal</th>
+                            <th scope="col" class="text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in cart_items %}
+                        <tr>
+                            <td>
+                                <strong>{{ item.product.name }}</strong>
+                            </td>
+                            <td class="text-center">{{ item.quantity }}</td>
+                            <td class="text-end">{{ item.product.price | format_currency }}</td>
+                            <td class="text-end">{{ item.subtotal | format_currency }}</td>
+                            <td class="text-center">
+                                <!-- Remove Item from Cart (POST form with CSRF) -->
+                                <form method="POST"
+                                      action="{{ url_for('cart.remove_from_cart', product_id=item.product.id) }}"
+                                      class="d-inline">
+                                  
+                                    <button type="submit"
+                                            class="btn btn-sm btn-outline-danger"
+                                            aria-label="Remove {{ item.product.name }} from cart">
+                                        Remove
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="row justify-content-end">
+                <div class="col-md-6">
+                    <table class="table table-borderless">
+                        <tr>
+                            <th class="text-end fs-5">Total:</th>
+                            <td class="text-end fs-5 fw-bold">{{ total | format_currency }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between mt-4">
+                <a href="{{ url_for('products.list_products') }}"
+                   class="btn btn-outline-secondary"
+                   aria-label="Continue Shopping">
+                    &larr; Continue Shopping
+                </a>
+
+                <!-- Proceed to Checkout (POST form with CSRF) -->
+                <form method="POST" action="{{ url_for('customers.add_billing_address') }}" class="d-inline">
+                  
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    
+                    <button type="submit"
+                            class="btn btn-primary"
+                            aria-label="Proceed to Checkout">
+                        Proceed to Checkout &rarr;
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="alert alert-secondary mt-4" role="alert">
+        <strong>What’s next?</strong><br>
+        After clicking <em>“Proceed to Checkout”</em>, you’ll enter your shipping and payment details to complete your order.
+    </div>
+    {% else %}
+    <div class="alert alert-info" role="status">
+        Your cart is currently empty.
+    </div>
+    <div class="mt-4 text-center">
+        <a href="{{ url_for('products.list_products') }}"
+           class="btn btn-outline-primary btn-lg"
+           aria-label="Browse Products">
+            Browse Products
+        </a>
+        <a href="{{ url_for('main.home') }}"
+           class="btn btn-link mt-2"
+           aria-label="Return to Home">
+            Return to Home
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+

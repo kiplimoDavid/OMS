@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Search Results{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h3>Search Results</h3>
+    <p>Showing results for: <strong>{{ query }}</strong></p>
+
+    {% if not products and not orders %}
+        <!-- Toast message when nothing is found -->
+        <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 2000;">
+            <div id="noResultsToast" class="toast align-items-center text-white bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="3000">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        No results found for "{{ query }}". Redirecting back...
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const toast = new bootstrap.Toast(document.getElementById('noResultsToast'));
+                toast.show();
+
+                // Redirect back after 3 seconds
+                setTimeout(() => {
+                    window.history.back();
+                }, 3000);
+            });
+        </script>
+    {% else %}
+        {% if products %}
+            <h5 class="mt-4">Products</h5>
+            <ul class="list-group mb-4">
+                {% for product in products %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <a href="{{ url_for('products.view_product', product_id=product.id) }}">
+                            {{ product.name }}
+                        </a>
+                        <span class="badge bg-secondary">{{ product.category or 'No category' }}</span>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+
+        {% if orders %}
+            <h5 class="mt-4">Orders</h5>
+            <ul class="list-group mb-4">
+                {% for order in orders %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <a href="{{ url_for('orders.view_order', order_id=order.id) }}">
+                            Order #{{ order.id }}
+                        </a>
+                        <span class="badge bg-info text-dark">{{ order.order_date.strftime('%Y-%m-%d') }}</span>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    {% endif %}
+</div>
+{% endblock %}

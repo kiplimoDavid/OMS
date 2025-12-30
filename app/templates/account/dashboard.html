@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Account Dashboard{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <h2>Welcome, {{ current_user.username }}</h2>
+
+  <div class="row g-4 mt-4">
+
+    <div class="col-md-6">
+      <div class="card shadow-sm">
+        <div class="card-header bg-light">
+          Quick Actions
+        </div>
+        <div class="card-body">
+          <a href="{{ url_for('products.list_products') }}" class="btn btn-outline-primary w-100 mb-3">
+            Continue Shopping
+          </a>
+          <a href="{{ url_for('cart.view_cart') }}" class="btn btn-outline-secondary w-100 mb-3">
+            View Cart
+          </a>
+          <a href="{{ url_for('cart.checkout') }}" class="btn btn-primary w-100">
+            Proceed to Checkout
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-6">
+      <div class="card shadow-sm">
+        <div class="card-header bg-light">
+          Recent Orders
+        </div>
+        <ul class="list-group list-group-flush">
+          {% if recent %}
+            {% for order in recent %}
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                <div>
+                  #{{ order.order_number }} – {{ order.order_date.strftime('%b %d') }}
+                </div>
+                <span class="badge bg-{{ 
+                  'warning text-dark' if order.status.name == 'PENDING' else 
+                  'info' if order.status.name == 'SHIPPED' else 
+                  'success' if order.status.name == 'DELIVERED' else 
+                  'secondary' }}">
+                  {{ order.status.value }}
+                </span>
+              </li>
+            {% endfor %}
+          {% else %}
+            <li class="list-group-item">
+              No recent orders yet.
+            </li>
+          {% endif %}
+        </ul>
+        <div class="card-footer text-end">
+          <a href="{{ url_for('orders.my_orders') }}" class="btn btn-outline-secondary btn-sm">
+            View All Orders
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

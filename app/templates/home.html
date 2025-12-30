@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% from "components/_product_card.html" import product_card %}
+
+{% block title %}Products{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+    <div class="mb-4">
+        <h1 class="mb-3"><i class="bi bi-box-seam me-2" aria-hidden="true"></i>All Products</h1>
+        <p class="text-muted mb-0">Explore all products currently available</p>
+    </div>
+
+    <!-- Scrollable layout for small screens -->
+    <div class="d-block d-md-none">
+        {% for group in products|batch(10, fill_with=None) %}
+        <div class="overflow-auto pb-2" style="white-space: nowrap;">
+            <div class="d-flex flex-nowrap" style="gap: 1px;">
+                {% for product in group %}
+                    {% if product %}
+                        {{ product_card(product, compact=True) }}
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Grid layout for medium and large screens -->
+    <div class="row g-1 d-none d-md-flex">
+        {% for product in products %}
+        <div class="col-6 col-sm-4 col-md-3 col-lg-2 d-flex">
+            {{ product_card(product, compact=False) }}
+        </div>
+        {% endfor %}
+    </div>
+
+</div>
+{% endblock %}

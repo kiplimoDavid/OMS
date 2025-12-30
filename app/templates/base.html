@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Order Management{% endblock %}</title>
+
+    <!-- CSS Links -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+    <style>
+        body, html {
+            height: 100%;
+            margin: 0;
+        }
+
+        .wrapper {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        .content {
+            flex: 1;
+        }
+
+        .footer {
+            background-color: var(--bs-body-bg);
+            color: var(--bs-body-color);
+            padding: 1rem 0;
+        }
+
+        .sidebar {
+            position: fixed;
+            top: 56px;
+            left: 0;
+            height: 100%;
+            width: 25%;
+            max-width: 300px;
+            background-color: var(--bs-dark);
+            color: white;
+            overflow-y: auto;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease-in-out;
+            z-index: 1040;
+        }
+
+        .sidebar.show {
+            transform: translateX(0);
+        }
+
+        .sidebar a {
+            color: white;
+            padding: 0.6rem 1rem;
+            display: block;
+            text-decoration: none;
+        }
+
+        .sidebar a:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 75%;
+            }
+        }
+
+        .cart-badge {
+            position: absolute;
+            top: 0;
+            right: 0;
+            background: red;
+            color: white;
+            border-radius: 50%;
+            font-size: 0.7rem;
+            padding: 0.15rem 0.4rem;
+        }
+
+        .navbar-logo {
+            height: 40px;
+            width: auto;
+            max-width: 120px;
+        }
+
+        .search-wrapper {
+            position: relative;
+            flex: 1 1 auto;
+            min-width: 100px;
+            max-width: 400px;
+        }
+
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 100%;
+            max-height: 200px;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            z-index: 1050;
+            overflow-y: auto;
+            display: none;
+        }
+
+        .search-result-item {
+            padding: 0.5rem;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+        }
+
+        .search-result-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        @media (max-width: 576px) {
+            .navbar .nav-item {
+                margin: 0 0.25rem;
+            }
+
+            .search-wrapper {
+                max-width: 160px;
+            }
+
+            .navbar-logo {
+                max-width: 80px;
+                height: auto;
+            }
+
+            .navbar .container-fluid {
+                flex-wrap: nowrap;
+                overflow-x: auto;
+            }
+        }
+
+        .navbar .dropdown {
+            position: relative;
+        }
+
+        .navbar .dropdown-menu {
+            position: absolute !important;
+            top: 100%;
+            right: 0;
+            z-index: 9999;
+            margin-top: 0.3rem;
+            box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
+        }
+
+        main.content, .container, .wrapper {
+            position: relative;
+            overflow: visible !important;
+            z-index: auto;
+        }
+    </style>
+</head>
+<body>
+<div class="wrapper">
+
+    <!-- Sidebar -->
+    <div id="sidebar" class="sidebar">
+        {% if current_user.is_authenticated %}
+            {% if current_user.is_admin() or current_user.is_staff() %}
+                <a href="{{ url_for('main.dashboard') }}">Dashboard</a>
+                <a href="{{ url_for('customers.list_customers') }}">Customers</a>
+                <a href="{{ url_for('products.list_products') }}">Products</a>
+                <a href="{{ url_for('orders.list_orders') }}">Orders</a>
+                <a href="{{ url_for('reports.sales_report') }}">Reports</a>
+            {% elif current_user.is_customer() %}
+                <a href="{{ url_for('products.list_products') }}">Products</a>
+                <a href="{{ url_for('orders.my_orders') }}">My Orders</a>
+            {% endif %}
+        {% endif %}
+    </div>
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+        <div class="container-fluid d-flex align-items-center flex-nowrap">
+            <!-- Sidebar toggle -->
+            <button class="btn btn-outline-light me-2" onclick="toggleSidebar()">
+                <i class="bi bi-list"></i>
+            </button>
+
+            <!-- Brand/logo -->
+            <a class="navbar-brand d-flex align-items-center me-2" href="{{ url_for('main.index') }}">
+                <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Company Logo" class="navbar-logo">
+            </a>
+
+            <!-- 🔍 GLOBAL SEARCH (Now accessible to all users) -->
+            <div class="search-wrapper me-auto ms-2">
+                <form id="searchForm" method="GET" action="{{ url_for('main.search') }}">
+                    <div class="input-group input-group-sm">
+                        <input id="globalSearchInput" class="form-control" name="q" type="search" placeholder="Search..." autocomplete="off">
+                        <button class="btn btn-outline-light" type="submit"><i class="bi bi-search"></i></button>
+                    </div>
+                </form>
+                <div id="searchResults" class="search-results"></div>
+            </div>
+
+            <!-- Right navbar -->
+            <ul class="navbar-nav ms-3 d-flex flex-row align-items-center">
+
+                <!-- Cart (only for customers or unauthenticated) -->
+                {% if not (current_user.is_authenticated and (current_user.is_admin() or current_user.is_staff())) %}
+                    <li class="nav-item me-3 position-relative">
+                        <a class="nav-link" href="{{ url_for('cart.view_cart') }}">
+                            <i class="bi bi-cart3 fs-5"></i>
+                            {% if cart_items_count and cart_items_count > 0 %}
+                                <span class="cart-badge">{{ cart_items_count }}</span>
+                            {% endif %}
+                        </a>
+                    </li>
+                {% endif %}
+
+                <!-- Authenticated User Dropdown -->
+                {% if current_user.is_authenticated %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-person-circle me-1"></i>{{ current_user.username }}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                            <li><a class="dropdown-item" href="{{ url_for('auth.profile') }}">Profile</a></li>
+                            {% if current_user.is_admin() %}
+                                <li><a class="dropdown-item" href="{{ url_for('auth.manage_users') }}">User Management</a></li>
+                            {% endif %}
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">Logout</a></li>
+                        </ul>
+                    </li>
+                {% else %}
+                    <!-- Login Link -->
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('auth.login') }}">
+                            <i class="bi bi-box-arrow-in-right me-1"></i>Login
+                        </a>
+                    </li>
+                {% endif %}
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="content pt-5 mt-3">
+        <div class="container mt-4">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            {% block content %}
+            
+            {% endblock %}
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer mt-auto text-center">
+        <div class="container">
+            <div class="row">
+                <div class="col text-muted small">
+                    &copy; 2023 Order Management System — Powered by DavTech International.
+                </div>
+            </div>
+        </div>
+    </footer>
+</div>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('show');
+    }
+
+    $(document).ready(function () {
+        const $input = $('#globalSearchInput');
+        const $results = $('#searchResults');
+
+        $input.on('input', function () {
+            const query = $(this).val();
+            if (query.length < 2) {
+                $results.hide().empty();
+                return;
+            }
+
+            $.ajax({
+                url: "{{ url_for('main.search_suggestions') }}",
+                type: 'GET',
+                data: { q: query },
+                success: function (data) {
+                    $results.empty().show();
+                    if (data.length === 0) {
+                        $results.append('<div class="search-result-item text-muted">No results found</div>');
+                    } else {
+                        data.forEach(item => {
+                            $results.append(
+                                `<div class="search-result-item" onclick="location.href='${item.url}'">
+                                    <strong>${item.type}:</strong> ${item.name}
+                                </div>`
+                            );
+                        });
+                    }
+                },
+                error: function () {
+                    $results.hide().empty();
+                }
+            });
+        });
+
+        $(document).on('click', function (e) {
+            if (!$(e.target).closest('.search-wrapper').length) {
+                $results.hide().empty();
+            }
+        });
+    });
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

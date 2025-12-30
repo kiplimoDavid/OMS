@@ -1,0 +1,413 @@
+{% extends "base.html" %}
+
+{% block title %}Create Order | Order Management{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('main.dashboard') }}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('orders.list_orders') }}">Orders</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Create Order</li>
+        </ol>
+    </nav>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-primary text-white py-3">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-cart-plus fs-3 me-2"></i>
+                <h2 class="mb-0">Create New Order</h2>
+            </div>
+        </div>
+        <div class="card-body">
+            <form method="POST" class="needs-validation" novalidate>
+                {{ form.hidden_tag() }}
+                
+                <!-- Customer Selection -->
+                <div class="mb-4">
+                    <h4 class="mb-3 border-bottom pb-2"><i class="bi bi-person me-2"></i>Customer Information</h4>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="form-group">
+                                {{ form.customer_id.label(class="form-label fw-bold") }}
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="bi bi-search"></i>
+                                    </span>
+                                    {{ form.customer_id(class="form-select") }}
+                                </div>
+                                {% for error in form.customer_id.errors %}
+                                <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="form-group">
+                                <label class="form-label fw-bold">Order Date</label>
+                                <input type="text" class="form-control" value="{{ current_date }}" readonly>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="form-group">
+                                {{ form.shipping_address.label(class="form-label fw-bold") }}
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="bi bi-truck"></i>
+                                    </span>
+                                    {{ form.shipping_address(class="form-control table-responsive", rows=2, placeholder="Shipping address") }}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="form-group">
+                                {{ form.billing_address.label(class="form-label fw-bold") }}
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="bi bi-credit-card"></i>
+                                    </span>
+                                    {{ form.billing_address(class="form-control table-responsive", rows=2, placeholder="Billing address") }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Order Items -->
+                <div class="mb-4">
+                    <h4 class="mb-3 border-bottom pb-2"><i class="bi bi-list-check me-2"></i>Order Items</h4>
+                    
+                    <div id="order-items" class="mb-3">
+                        {% for item_form in form.items %}
+                        <div class="card mb-3 item-row">
+                            <div class="card-body">
+                                <div class="row align-items-center">
+                                    <div class="col-md-5 mb-3 mb-md-0">
+                                        <div class="form-group">
+                                            {{ item_form.product_id.label(class="form-label fw-bold") }}
+                                            <div class="input-group">
+                                                <span class="input-group-text">
+                                                    <i class="bi bi-box"></i>
+                                                </span>
+                                                {{ item_form.product_id(class="form-select product-select") }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2 mb-3 mb-md-0">
+                                        <div class="form-group">
+                                            {{ item_form.quantity.label(class="form-label fw-bold") }}
+                                            <div class="input-group">
+                                                {{ item_form.quantity(class="form-control quantity") }}
+                                                <span class="input-group-text stock-info">Stock: 0</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 mb-3 mb-md-0">
+                                        <div class="form-group">
+                                            <label class="form-label fw-bold">Price & Total</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text">$</span>
+                                                <input type="text" class="form-control price" readonly>
+                                                <span class="input-group-text bg-light">Total: $<span class="item-total">0.00</span></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2 d-flex align-items-center">
+                                        <button type="button" class="btn btn-danger remove-item w-100">
+                                            <i class="bi bi-trash me-1"></i>Remove
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="d-grid mb-4">
+                        <button type="button" id="add-item" class="btn btn-secondary">
+                            <i class="bi bi-plus-circle me-2"></i>Add Another Item
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Order Summary -->
+                <div class="mb-4">
+                    <h4 class="mb-3 border-bottom pb-2"><i class="bi bi-receipt me-2"></i>Order Summary</h4>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="form-group">
+                                {{ form.payment_method.label(class="form-label fw-bold") }}
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="bi bi-credit-card"></i>
+                                    </span>
+                                    {{ form.payment_method(class="form-select table-responsive") }}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="form-group">
+                                {{ form.estimated_delivery.label(class="form-label fw-bold") }}
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="bi bi-calendar"></i>
+                                    </span>
+                                    {{ form.estimated_delivery(class="form-control table-responsive", type="date") }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <div class="form-group">
+                                {{ form.notes.label(class="form-label fw-bold") }}
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="bi bi-pencil"></i>
+                                    </span>
+                                    {{ form.notes(class="form-control table-responsive", rows=3, placeholder="Order notes or special instructions") }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card border-primary mb-4">
+                        <div class="card-header bg-primary bg-opacity-10">
+                            <h5 class="mb-0">Order Calculation</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between mb-2">
+                                <div>Subtotal:</div>
+                                <div>$<span id="subtotal">0.00</span></div>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <div>Tax ({{ tax_rate }}%):</div>
+                                <div>$<span id="tax-amount">0.00</span></div>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <div>Shipping:</div>
+                                <div>$<span id="shipping-cost">0.00</span></div>
+                            </div>
+                            <div class="d-flex justify-content-between border-top pt-2 fw-bold fs-5">
+                                <div>Total:</div>
+                                <div>$<span id="order-total">0.00</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="d-flex justify-content-between">
+                    <a href="{{ url_for('orders.list_orders') }}" class="btn btn-outline-secondary px-4">
+                        <i class="bi bi-x-circle me-2"></i>Cancel
+                    </a>
+                    <button type="submit" class="btn btn-primary px-4">
+                        <i class="bi bi-check-circle me-2"></i>Create Order
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize product data
+    const products = {
+        {% for product in products %}
+        {{ product.id }}: { 
+            price: {{ product.price }}, 
+            stock: {{ product.stock_quantity }},
+            name: "{{ product.name }}",
+            sku: "{{ product.sku }}"
+        },
+        {% endfor %}
+    };
+    
+    const taxRate = {{ tax_rate }}; // Tax rate from backend
+    const shippingCost = 0; // Base shipping cost
+    
+    // Add new item row
+    document.getElementById('add-item').addEventListener('click', function() {
+        const newRow = document.querySelector('.item-row').cloneNode(true);
+        newRow.querySelector('.product-select').selectedIndex = 0;
+        newRow.querySelector('.quantity').value = 1;
+        newRow.querySelector('.price').value = '';
+        newRow.querySelector('.stock-info').textContent = 'Stock: 0';
+        newRow.querySelector('.item-total').textContent = '0.00';
+        
+        // Clear select value and reset events
+        const productSelect = newRow.querySelector('.product-select');
+        productSelect.value = '';
+        productSelect.dispatchEvent(new Event('change'));
+        
+        document.getElementById('order-items').appendChild(newRow);
+        addRowEventListeners(newRow);
+    });
+    
+    // Add event listeners to initial rows
+    document.querySelectorAll('.item-row').forEach(row => {
+        addRowEventListeners(row);
+    });
+    
+    function addRowEventListeners(row) {
+        const productSelect = row.querySelector('.product-select');
+        const quantityInput = row.querySelector('.quantity');
+        const priceInput = row.querySelector('.price');
+        const itemTotalSpan = row.querySelector('.item-total');
+        const stockInfo = row.querySelector('.stock-info');
+        const removeBtn = row.querySelector('.remove-item');
+        
+        // Initialize stock info
+        if (productSelect.value && products[productSelect.value]) {
+            stockInfo.textContent = `Stock: ${products[productSelect.value].stock}`;
+        }
+        
+        productSelect.addEventListener('change', function() {
+            const productId = this.value;
+            if (productId && products[productId]) {
+                priceInput.value = products[productId].price.toFixed(2);
+                stockInfo.textContent = `Stock: ${products[productId].stock}`;
+                stockInfo.className = 'input-group-text stock-info';
+                
+                // Validate quantity doesn't exceed stock
+                if (parseInt(quantityInput.value) > products[productId].stock) {
+                    quantityInput.value = products[productId].stock;
+                    showToast(`Quantity reduced to available stock for ${products[productId].name}`, 'warning');
+                }
+            } else {
+                priceInput.value = '';
+                stockInfo.textContent = 'Stock: 0';
+                itemTotalSpan.textContent = '0.00';
+            }
+            calculateItemTotal(row);
+            calculateOrderTotal();
+        });
+        
+        quantityInput.addEventListener('input', function() {
+            const productId = productSelect.value;
+            if (productId && products[productId]) {
+                // Validate doesn't exceed stock
+                if (parseInt(this.value) > products[productId].stock) {
+                    this.value = products[productId].stock;
+                    showToast(`Cannot exceed available stock for ${products[productId].name}`, 'warning');
+                }
+                // Validate minimum quantity
+                if (parseInt(this.value) < 1) {
+                    this.value = 1;
+                }
+            }
+            calculateItemTotal(row);
+            calculateOrderTotal();
+        });
+        
+        removeBtn.addEventListener('click', function() {
+            if (document.querySelectorAll('.item-row').length > 1) {
+                row.remove();
+                calculateOrderTotal();
+            } else {
+                showToast('An order must have at least one item', 'danger');
+            }
+        });
+    }
+    
+    function calculateItemTotal(row) {
+        const productSelect = row.querySelector('.product-select');
+        const quantityInput = row.querySelector('.quantity');
+        const itemTotalSpan = row.querySelector('.item-total');
+        
+        if (productSelect.value && products[productSelect.value] && quantityInput.value) {
+            const price = products[productSelect.value].price;
+            const quantity = parseInt(quantityInput.value);
+            const itemTotal = price * quantity;
+            itemTotalSpan.textContent = itemTotal.toFixed(2);
+        } else {
+            itemTotalSpan.textContent = '0.00';
+        }
+    }
+    
+    function calculateOrderTotal() {
+        let subtotal = 0;
+        
+        // Calculate subtotal from all items
+        document.querySelectorAll('.item-row').forEach(row => {
+            const productSelect = row.querySelector('.product-select');
+            const quantityInput = row.querySelector('.quantity');
+            
+            if (productSelect.value && products[productSelect.value] && quantityInput.value) {
+                subtotal += products[productSelect.value].price * parseInt(quantityInput.value);
+            }
+        });
+        
+        // Calculate tax
+        const taxAmount = subtotal * (taxRate / 100);
+        
+        // Update display
+        document.getElementById('subtotal').textContent = subtotal.toFixed(2);
+        document.getElementById('tax-amount').textContent = taxAmount.toFixed(2);
+        document.getElementById('shipping-cost').textContent = shippingCost.toFixed(2);
+        document.getElementById('order-total').textContent = (subtotal + taxAmount + shippingCost).toFixed(2);
+    }
+    
+    function showToast(message, type = 'success') {
+        // In a real implementation, you'd use a toast library or Bootstrap's toast
+        // This is a simplified version for demonstration
+        const toastContainer = document.createElement('div');
+        toastContainer.className = `toast show align-items-center text-white bg-${type} border-0 position-fixed bottom-0 end-0 m-3`;
+        toastContainer.style.zIndex = '9999';
+        
+        const toastBody = document.createElement('div');
+        toastBody.className = 'd-flex';
+        toastBody.innerHTML = `
+            <div class="toast-body">${message}</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        `;
+        
+        toastContainer.appendChild(toastBody);
+        document.body.appendChild(toastContainer);
+        
+        // Auto-remove after 3 seconds
+        setTimeout(() => {
+            toastContainer.remove();
+        }, 3000);
+    }
+    
+    // Initialize calculations
+    calculateOrderTotal();
+    
+    // Add change listeners to product selects and quantity inputs
+    document.querySelectorAll('.product-select').forEach(select => {
+        select.dispatchEvent(new Event('change'));
+    });
+    
+    document.querySelectorAll('.quantity').forEach(input => {
+        input.dispatchEvent(new Event('input'));
+    });
+});
+</script>
+
+<style>
+    .item-row .card {
+        border-left: 3px solid #0d6efd;
+        transition: all 0.2s ease;
+    }
+    
+    .item-row .card:hover {
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        transform: translateY(-2px);
+    }
+    
+    .stock-info {
+        min-width: 100px;
+    }
+    
+    .toast {
+        max-width: 350px;
+    }
+</style>
+{% endblock %}

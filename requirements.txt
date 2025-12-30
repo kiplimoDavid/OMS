@@ -1,0 +1,66 @@
+# Core Flask
+flask
+flask-sqlalchemy
+flask-migrate
+flask-login
+flask-wtf
+flask-mail
+flask-bcrypt
+flask-cors
+flask-restful
+flask-uploads
+flask-limiter
+flask-talisman
+flask-session
+
+# Configuration & environment variables
+python-dotenv
+dynaconf
+
+# Database drivers
+psycopg2-binary   # PostgreSQL
+pymysql           # MySQL/MariaDB
+
+# Forms & validation
+wtforms
+email-validator
+
+# Image & file handling
+pillow
+python-magic
+
+# API & HTTP requests
+requests
+httpx
+
+# Security
+passlib
+pyjwt
+cryptography
+
+# Payments / external APIs (choose as needed)
+stripe
+paypalrestsdk
+mpesa-api   # If integrating M-PESA
+
+# Utilities
+python-slugify
+arrow
+babel
+itsdangerous
+
+# Data processing
+pandas
+openpyxl
+xlrd
+
+# Testing
+pytest
+pytest-flask
+coverage
+faker
+
+# Deployment & production server
+gunicorn
+eventlet
+gevent

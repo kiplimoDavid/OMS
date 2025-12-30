@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}Sales Report{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h1 class="mb-4">Sales Report</h1>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <div class="card text-center bg-light h-100">
+                <div class="card-body">
+                    <h6 class="card-title">Total Orders</h6>
+                    <p class="card-text display-5">{{ orders|length }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card text-center bg-light h-100">
+                <div class="card-body">
+                    <h6 class="card-title">Total Sales</h6>
+                    <p class="card-text display-5">KES {{ "%.2f"|format(total_sales) }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card text-center bg-light h-100">
+                <div class="card-body">
+                    <h6 class="card-title">Avg. Order Value</h6>
+                    <p class="card-text display-5">KES {{ "%.2f"|format(avg_order_value) }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Orders Table with Filters -->
+    <div class="card">
+        <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-md-center">
+            <h5 class="mb-2 mb-md-0">Orders from {{ start_date }} to {{ end_date }}</h5>
+            <a href="{{ url_for('reports.full_sales_report') }}" class="btn btn-sm btn-outline-primary">
+                Advanced Report
+            </a>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            <th>Order #</th>
+                            <th>Date</th>
+                            <th>Customer</th>
+                            <th>Status</th>
+                            <th class="text-end">Total (KES)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in orders %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td>
+                                <a href="{{ url_for('orders.view_order', order_id=order.id) }}">
+                                    {{ order.order_number }}
+                                </a>
+                            </td>
+                            <td>{{ order.order_date.strftime('%Y-%m-%d') }}</td>
+                            <td>{{ order.customer.name }}</td>
+                            <td>
+                                <span class="badge 
+                                      {% if order.status.name == 'DELIVERED' %}
+                                          bg-success
+                                      {% elif order.status.name in ['PROCESSING','SHIPPED'] %}
+                                          bg-info
+                                      {% else %}
+                                          bg-warning
+                                      {% endif %}">
+                                    {{ order.status.value }}
+                                </span>
+                            </td>
+                            <td class="text-end">KES {{ "%.2f"|format(order.total_amount) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

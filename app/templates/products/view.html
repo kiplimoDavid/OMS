@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}{{ product.name }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold">{{ product.name }}</h2>
+        {% if current_user.is_authenticated and (current_user.is_admin() or current_user.is_staff()) %}
+            <a href="{{ url_for('products.edit_product', product_id=product.id) }}" class="btn btn-outline-primary">Edit</a>
+        {% endif %}
+    </div>
+
+    <div class="row">
+        <!-- Image Gallery -->
+        <div class="col-md-6">
+            {% if product.images %}
+                <div id="productGallery" class="carousel slide mb-3" data-bs-ride="carousel">
+                    <div class="carousel-inner">
+                        {% for image in product.images %}
+                            <div class="carousel-item {% if loop.first %}active{% endif %}">
+                                <img src="{{ image.image_url }}" class="d-block w-100 rounded shadow-sm" alt="{{ image.alt_text or product.name }}">
+                            </div>
+                        {% endfor %}
+                    </div>
+                    {% if product.images|length > 1 %}
+                        <button class="carousel-control-prev" type="button" data-bs-target="#productGallery" data-bs-slide="prev">
+                            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                            <span class="visually-hidden">Previous</span>
+                        </button>
+                        <button class="carousel-control-next" type="button" data-bs-target="#productGallery" data-bs-slide="next">
+                            <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                            <span class="visually-hidden">Next</span>
+                        </button>
+                    {% endif %}
+                </div>
+            {% else %}
+                <img src="{{ product.image_url or url_for('static', filename='img/no-image.png') }}" class="img-fluid rounded shadow-sm mb-3" alt="Product image">
+            {% endif %}
+        </div>
+
+        <!-- Product Info -->
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Product Details</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Description:</strong></p>
+                    <p>{{ product.description or 'No description available.' }}</p>
+
+                    <hr>
+                    <p><strong>Base Price:</strong> <span class="text-success fw-bold">${{ "%.2f"|format(product.price) }}</span></p>
+                    {% if product.cost_price %}
+                        <p><strong>Cost Price:</strong> ${{ "%.2f"|format(product.cost_price) }}</p>
+                    {% endif %}
+                    <p>
+                        <strong>Stock:</strong>
+                        {% if product.stock_quantity > 0 %}
+                            <span class="badge bg-success">In Stock ({{ product.stock_quantity }})</span>
+                        {% else %}
+                            <span class="badge bg-danger">Out of Stock</span>
+                        {% endif %}
+                    </p>
+                    {% if product.reorder_level %}
+                        <p><strong>Reorder Level:</strong> {{ product.reorder_level }}</p>
+                    {% endif %}
+                    {% if product.category %}
+                        <p><strong>Category:</strong> {{ product.category.name }}</p>
+                    {% endif %}
+                    <p><strong>SKU:</strong> {{ product.sku or 'N/A' }}</p>
+                    <p><strong>Status:</strong> {{ "Active" if product.is_active else "Inactive" }}</p>
+                    <p><strong>Created:</strong> {{ product.created_at.strftime("%B %d, %Y") }}</p>
+                    {% if product.updated_at %}
+                        <p><strong>Last Updated:</strong> {{ product.updated_at.strftime("%B %d, %Y") }}</p>
+                    {% endif %}
+
+                    {% if product.stock_quantity > 0 %}
+                        <hr>
+
+                        {% if not current_user.is_authenticated or (current_user.is_authenticated and current_user.is_customer()) %}
+                            <form method="POST" action="{{ url_for('cart.add_to_cart', product_id=product.id) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                                {% if product.variants %}
+                                    <div class="mb-3">
+                                        <label for="variant" class="form-label">Choose Variant</label>
+                                        <select class="form-select" name="variant_id" required id="variantSelect">
+                                            {% for variant in product.variants %}
+                                                <option value="{{ variant.id }}" data-price="{{ "%.2f"|format(product.price + (variant.additional_price or 0)) }}">
+                                                    {{ variant.size or '' }} {{ variant.color or '' }} — +${{ "%.2f"|format(variant.additional_price or 0) }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                {% endif %}
+
+                                <div class="mb-3">
+                                    <label for="quantity" class="form-label">Quantity</label>
+                                    <input type="number" name="quantity" class="form-control" min="1" value="1" required>
+                                </div>
+
+                                <div class="mb-3">
+                                    <strong>Final Price:</strong>
+                                    <span id="finalPrice" class="text-success fw-bold">
+                                        ${{ "%.2f"|format(product.price + (product.variants[0].additional_price if product.variants else 0)) }}
+                                    </span>
+                                </div>
+
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-warning btn-lg">Add to Cart</button>
+                                </div>
+                            </form>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if product.variants %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const variantSelect = document.getElementById('variantSelect');
+        const finalPriceSpan = document.getElementById('finalPrice');
+
+        variantSelect.addEventListener('change', function () {
+            const selectedOption = variantSelect.options[variantSelect.selectedIndex];
+            const price = selectedOption.getAttribute('data-price');
+            finalPriceSpan.textContent = `$${parseFloat(price).toFixed(2)}`;
+        });
+    });
+</script>
+{% endif %}
+{% endblock %}

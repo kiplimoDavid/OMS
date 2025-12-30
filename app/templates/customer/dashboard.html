@@ -1,0 +1,28 @@
+
+{% extends 'base.html' %}
+{% block title %}My Orders{% endblock %}
+{% block content %}
+<h2 class="mb-3">My Orders</h2>
+
+<div class="mb-4">
+    <a href="{{ url_for('customer.dashboard') }}" class="btn btn-outline-secondary btn-sm {% if not selected_status %}active{% endif %}">All</a>
+    {% for status in ['PENDING', 'PROCESSING', 'PAID', 'CANCELLED', 'DELIVERED'] %}
+        <a href="{{ url_for('customer.dashboard', status=status) }}" class="btn btn-outline-primary btn-sm {% if selected_status == status %}active{% endif %}">{{ status }}</a>
+    {% endfor %}
+</div>
+
+{% if orders %}
+    <div class="list-group">
+        {% for order in orders %}
+        <div class="list-group-item">
+            <h6>Order #{{ order.id }}</h6>
+            <p>Status: <strong>{{ order.status.name }}</strong></p>
+            <p>Placed on: {{ order.created_at.strftime('%Y-%m-%d') }}</p>
+            <a href="#" class="btn btn-sm btn-outline-info">View Details</a>
+        </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <p class="text-muted">You have no orders yet.</p>
+{% endif %}
+{% endblock %}

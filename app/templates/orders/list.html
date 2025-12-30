@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+{% block title %}Orders{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- CSRF token for JavaScript use -->
+    <input type="hidden" id="csrf_token" value="{{ csrf_token() }}">
+
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('main.dashboard') }}">Dashboard</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Orders</li>
+        </ol>
+    </nav>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3 d-flex flex-wrap justify-content-between align-items-center">
+            <div>
+                <h2 class="mb-0"><i class="bi bi-cart me-2"></i>Order Management</h2>
+                <p class="text-muted mb-0">Track and manage all customer orders</p>
+            </div>
+            {% if current_user.is_authenticated and current_user.role.name in ['ADMIN', 'STAFF'] %}
+            <div class="d-flex flex-wrap gap-2 mt-3 mt-md-0">
+                <a href="{{ url_for('orders.add_order') }}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle me-1"></i>Create Order
+                </a>
+                <button id="bulkDeleteBtn" class="btn btn-danger" disabled>
+                    <i class="bi bi-trash me-1"></i>Bulk Delete
+                </button>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="card-body">
+            <div class="row mb-3 g-3">
+                <div class="col-md-4">
+                    <input type="text" id="orderSearch" class="form-control" placeholder="Search orders...">
+                </div>
+                <div class="col-md-3">
+                    <select id="statusFilter" class="form-select">
+                        <option value="">All Statuses</option>
+                        {% for status in order_statuses %}
+                        <option value="{{ status }}">{{ status }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select id="paymentFilter" class="form-select">
+                        <option value="">All Payments</option>
+                        {% for pstatus in payment_statuses %}
+                        <option value="{{ pstatus }}">{{ pstatus }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table id="ordersTable" class="table table-striped table-hover align-middle w-100">
+                    <thead class="table-light">
+                        <tr>
+                            {% if current_user.is_authenticated and current_user.role.name in ['ADMIN', 'STAFF'] %}
+                            <th><input type="checkbox" id="selectAll"></th>
+                            {% endif %}
+                            <th>Order #</th>
+                            <th>Customer</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Payment</th>
+                            <th>Total (Ksh)</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in orders %}
+                        <tr data-order-id="{{ order.id }}" data-status="{{ order.status.name }}" data-payment="{{ order.payment_status.name }}">
+                            {% if current_user.is_authenticated and current_user.role.name in ['ADMIN', 'STAFF'] %}
+                            <td><input type="checkbox" class="orderCheckbox"></td>
+                            {% endif %}
+                            <td>{{ order.order_number }}</td>
+                            <td>
+                                {% if order.customer %}
+                                <a href="{{ url_for('customers.view_customer', customer_id=order.customer.id) }}">{{ order.customer.name }}</a>
+                                {% else %}
+                                <span class="text-muted">N/A</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ order.order_date.strftime('%Y-%m-%d') }}</td>
+                            <td>
+                                <span class="badge 
+                                    {% if order.status.name == 'PENDING' %}bg-warning text-dark
+                                    {% elif order.status.name == 'SHIPPED' %}bg-info
+                                    {% elif order.status.name == 'DELIVERED' %}bg-success
+                                    {% elif order.status.name == 'CANCELLED' %}bg-danger
+                                    {% else %}bg-secondary{% endif %}">
+                                    {{ order.status.value }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge 
+                                    {% if order.payment_status.name == 'PAID' %}bg-success
+                                    {% elif order.payment_status.name == 'PARTIALLY_PAID' %}bg-warning text-dark
+                                    {% else %}bg-danger{% endif %}">
+                                    {{ order.payment_status.value }}
+                                </span>
+                            </td>
+                            <td>{{ "%.2f"|format(order.total_amount) }}</td>
+                            <td class="text-end">
+                                <a href="{{ url_for('orders.view_order', order_id=order.id) }}" class="btn btn-outline-primary btn-sm" title="View"><i class="bi bi-eye"></i></a>
+                                <a href="{{ url_for('orders.invoice', order_id=order.id) }}" class="btn btn-outline-secondary btn-sm" title="Invoice"><i class="bi bi-receipt"></i></a>
+                                {% if current_user.role.name in ['ADMIN', 'STAFF'] and order.status.name in ['PENDING', 'PROCESSING'] %}
+                                <form action="{{ url_for('orders.cancel_order', order_id=order.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Cancel this order?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm" title="Cancel"><i class="bi bi-x-circle"></i></button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if pagination %}
+            <div class="d-flex justify-content-center mt-4">
+                {{ pagination.links }}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- DataTables and Buttons extensions -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.3.6/css/buttons.bootstrap5.min.css">
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.bootstrap5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.print.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.colVis.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const table = $('#ordersTable').DataTable({
+        dom: 'Bfrtip',
+        buttons: [
+            { extend: 'csv', className: 'btn btn-outline-secondary btn-sm', title: 'Orders Export' },
+            { extend: 'excel', className: 'btn btn-outline-secondary btn-sm', title: 'Orders Export' },
+            { extend: 'print', className: 'btn btn-outline-secondary btn-sm' },
+            { extend: 'colvis', className: 'btn btn-outline-secondary btn-sm' }
+        ],
+        order: [[1, 'desc']],
+        columnDefs: [
+            { orderable: false, targets: [0, -1] }
+        ]
+    });
+
+    document.getElementById('orderSearch').addEventListener('input', function () {
+        table.search(this.value).draw();
+    });
+
+    document.getElementById('statusFilter').addEventListener('change', function () {
+        table.columns(4).search(this.value).draw();
+    });
+
+    document.getElementById('paymentFilter').addEventListener('change', function () {
+        table.columns(5).search(this.value).draw();
+    });
+
+    const selectAll = document.getElementById('selectAll');
+    const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+
+    if (selectAll) {
+        selectAll.addEventListener('change', function () {
+            const checkboxes = document.querySelectorAll('.orderCheckbox');
+            checkboxes.forEach(cb => cb.checked = selectAll.checked);
+            toggleBulkDeleteButton();
+        });
+
+        document.querySelectorAll('.orderCheckbox').forEach(cb => {
+            cb.addEventListener('change', toggleBulkDeleteButton);
+        });
+
+        function toggleBulkDeleteButton() {
+            const anyChecked = [...document.querySelectorAll('.orderCheckbox')].some(cb => cb.checked);
+            bulkDeleteBtn.disabled = !anyChecked;
+        }
+
+        bulkDeleteBtn.addEventListener('click', function () {
+            const selectedIds = [...document.querySelectorAll('.orderCheckbox:checked')]
+                .map(cb => cb.closest('tr').dataset.orderId);
+
+            if (!selectedIds.length) return;
+
+            if (confirm('Are you sure you want to delete selected orders?')) {
+                const csrfToken = document.getElementById('csrf_token').value;
+
+                fetch('{{ url_for("orders.bulk_delete") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({ ids: selectedIds })
+                })
+                .then(res => res.json())
+                .then(() => location.reload())
+                .catch(err => console.error('Bulk delete failed:', err));
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

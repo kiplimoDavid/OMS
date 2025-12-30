@@ -1,0 +1,838 @@
+{% extends "base.html" %}
+{% block title %}Order #{{ order.order_number }}{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+<div class="container py-4">
+
+  <!-- Toast Messages -->
+  <div aria-live="polite" aria-atomic="true" class="position-relative">
+    <div class="toast-container position-fixed bottom-0 end-0 p-3 z-3">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+      <div class="toast align-items-center text-bg-{{ 'success' if 'success' in category else 'danger' if 'danger' in category else 'info' }} border-0 show" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+          <div class="toast-body">{{ message }}</div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+      </div>
+      {% endfor %}
+      {% endwith %}
+    </div>
+  </div>
+
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">Order #{{ order.order_number }}</h2>
+    <div class="d-flex align-items-center gap-2">
+      <small class="text-muted">Date: {{ order.order_date.strftime('%Y‑%m‑%d') }}</small>
+      <a href="#trackingModal" data-bs-toggle="modal" class="btn btn-sm btn-info">
+        <i class="bi bi-geo-alt"></i> Track Order
+      </a>
+    </div>
+  </div>
+
+  <!-- Order Status & Edit -->
+  <div class="row mb-4 g-3 align-items-center">
+    <div class="col-auto">
+      <span class="badge bg-info text-dark px-3 py-2">{{ order.status }}</span>
+    </div>
+    {% if current_user.role.name in ['ADMIN', 'STAFF'] %}
+    <div class="col-auto d-flex gap-2">
+      <form method="POST" action="{{ url_for('orders.update_status', order_id=order.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <select name="status" class="form-select form-select-sm" required>
+          <option value="">Change Status…</option>
+          {% for status in ['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'REFUNDED'] %}
+            {% if status == 'DELIVERED' and balance_due > 0 %}
+              <option value="{{ status }}" disabled>{{ status }} (payment required)</option>
+            {% else %}
+              <option value="{{ status }}" {% if order.status == status %}selected{% endif %}>{{ status }}</option>
+            {% endif %}
+          {% endfor %}
+        </select>
+        <button type="submit" class="btn btn-outline-primary btn-sm">Update</button>
+      </form>
+      <a href="{{ url_for('orders.edit_order', order_id=order.id) }}" class="btn btn-sm btn-warning">Edit</a>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Customer Info -->
+  <div class="card mb-4 shadow-sm">
+    <div class="card-body">
+      <h5 class="card-title">Customer Information</h5>
+      <p class="mb-1"><strong>Name:</strong> {{ order.customer.name }}</p>
+      <p class="mb-1"><strong>Email:</strong> {{ order.customer.email }}</p>
+      <p><strong>Phone:</strong> {{ order.customer.phone }}</p>
+    </div>
+  </div>
+
+  <!-- Shipping Address -->
+  {% if order.shipping_address %}
+  <div class="card mb-4 shadow-sm">
+    <div class="card-body">
+      <h5 class="card-title">Shipping Address</h5>
+      <p class="mb-1">{{ order.shipping_address.street }}</p>
+      <p class="mb-1">{{ order.shipping_address.city }}, {{ order.shipping_address.state }}</p>
+      <p>{{ order.shipping_address.country }}, {{ order.shipping_address.postal_code }}</p>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Order Items -->
+  <div class="table-responsive mb-4">
+    <table class="table table-bordered align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Product</th>
+          <th class="text-center">Quantity</th>
+          <th class="text-end">Unit Price (Ksh)</th>
+          <th class="text-end">Subtotal (Ksh)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in order.items %}
+        <tr>
+          <td>{{ item.product.name }}</td>
+          <td class="text-center">{{ item.quantity }}</td>
+          <td class="text-end">{{ "%.2f"|format(item.unit_price) }}</td>
+          <td class="text-end">{{ "%.2f"|format(item.quantity * item.unit_price) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Totals -->
+  <div class="row justify-content-end mb-4">
+    <div class="col-md-6">
+      <table class="table table-borderless">
+        <tr>
+          <th class="text-end">Subtotal:</th>
+          <td class="text-end">Ksh {{ "%.2f"|format(order.subtotal) }}</td>
+        </tr>
+        <tr>
+          <th class="text-end">Shipping:</th>
+          <td class="text-end">Ksh {{ "%.2f"|format(order.shipping_cost) }}</td>
+        </tr>
+        <tr>
+          <th class="text-end">Tax:</th>
+          <td class="text-end">Ksh {{ "%.2f"|format(order.tax_amount) }}</td>
+        </tr>
+        <tr class="border-top">
+          <th class="text-end">Total Amount:</th>
+          <td class="text-end">Ksh {{ "%.2f"|format(order.total_amount) }}</td>
+        </tr>
+        <tr>
+          <th class="text-end">Total Paid:</th>
+          <td class="text-end">Ksh {{ "%.2f"|format(total_paid) }}</td>
+        </tr>
+        <tr class="fw-bold">
+          <th class="text-end">Balance Due:</th>
+          <td class="text-end text-danger">Ksh {{ "%.2f"|format(balance_due) }}</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- Payment Status -->
+  <div class="alert alert-{% if balance_due > 0 %}warning{% else %}success{% endif %} mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+      <strong>Payment Status:</strong>
+      <span>
+        {% if balance_due == 0 %}
+          Fully Paid
+        {% elif total_paid == 0 %}
+          Payment Pending
+        {% else %}
+          Partially Paid ({{ (total_paid / order.total_amount * 100)|round }}%)
+        {% endif %}
+      </span>
+    </div>
+    {% if order.status == 'REFUNDED' %}
+      <div class="mt-2">
+        <strong>Refund Status:</strong> Refund processed on {{ order.updated_at.strftime('%Y‑%m‑%d') }}
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Payment Options for Customer -->
+  {% if current_user.role.name == 'CUSTOMER' %}
+    {% if total_paid == 0.0 %}
+    <div class="mb-3">
+      <a href="#makePaymentModal" data-bs-toggle="modal" class="btn btn-success">Make Payment</a>
+    </div>
+    {% elif balance_due > 0 %}
+    <div class="mb-3">
+      <a href="#clearBalanceModal" data-bs-toggle="modal" class="btn btn-outline-success">Clear Balance</a>
+    </div>
+    {% endif %}
+  {% endif %}
+
+  <!-- Admin Payment Management -->
+  {% if current_user.role.name in ['ADMIN', 'STAFF'] %}
+  <div class="mb-4">
+    <div class="d-flex gap-2">
+      <a href="#managePaymentModal" data-bs-toggle="modal" class="btn btn-outline-primary">
+        <i class="bi bi-credit-card"></i> Record Payment
+      </a>
+      {% if order.status == 'REFUNDED' %}
+      <a href="#refundDetailsModal" data-bs-toggle="modal" class="btn btn-outline-danger">
+        <i class="bi bi-arrow-counterclockwise"></i> View Refund
+      </a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Action Links -->
+  <div class="d-flex flex-wrap gap-3 mt-4 mb-5">
+    {% if order.status not in ['SHIPPED', 'DELIVERED', 'CANCELLED'] %}
+      {% if current_user.role.name in ['CUSTOMER', 'ADMIN', 'STAFF'] %}
+      <a href="#cancelOrderModal" data-bs-toggle="modal" class="link-danger text-decoration-none">❌ Cancel Order</a>
+      {% endif %}
+    {% endif %}
+
+    <a href="#invoiceModal" data-bs-toggle="modal" class="link-primary text-decoration-none">🧾 View Invoice</a>
+    
+    <a href="#trackingModal" data-bs-toggle="modal" class="link-info text-decoration-none">📦 Track Order</a>
+
+    {% if current_user.role.name == 'CUSTOMER' %}
+    <a href="#reorderModal" data-bs-toggle="modal" class="link-secondary text-decoration-none">🔁 Reorder</a>
+    <a href="#supportModal" data-bs-toggle="modal" class="link-info text-decoration-none">💬 Contact Support</a>
+    {% endif %}
+    
+    {% if current_user.role.name in ['ADMIN', 'STAFF'] and order.status != 'REFUNDED' and total_paid > 0 %}
+    <a href="#initiateRefundModal" data-bs-toggle="modal" class="link-danger text-decoration-none">💸 Initiate Refund</a>
+    {% endif %}
+
+    <a href="{{ url_for('orders.list_orders') }}" class="link-dark text-decoration-none">🔙 Back to Orders</a>
+  </div>
+</div>
+
+<!-- All Modals Inline -->
+
+<!-- Make Payment Modal (Green: Positive) -->
+<div class="modal fade" id="makePaymentModal" tabindex="-1" aria-labelledby="makePaymentModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <form method="POST" action="{{ url_for('account.make_payment', order_id=order.id) }}" id="paymentForm">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="modal-content border-success">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title" id="makePaymentModalLabel">Make Payment</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p>Amount to pay: <strong>Ksh {{ "%.2f"|format(balance_due) }}</strong></p>
+          <div class="mb-3">
+            <label for="payment_method_make" class="form-label">Payment Method</label>
+            <select id="payment_method_make" class="form-select" name="payment_method" required>
+              <option value="">-- Choose Payment Method --</option>
+              <option value="MPESA">M‑PESA</option>
+              <option value="CARD" disabled>Credit/Debit Card (Temporarily Unavailable)</option>
+              <option value="BANK" disabled>Bank Transfer (Temporarily Unavailable)</option>
+            </select>
+          </div>
+          <div id="mpesaSection" class="d-none">
+            <div class="mb-3">
+              <label for="phone_number" class="form-label">M-PESA Phone Number</label>
+              <input type="tel" class="form-control" id="phone_number" name="phone_number" 
+                     placeholder="07XXXXXXXX" pattern="07\d{8}" 
+                     title="Please enter a valid Kenyan phone number (07XXXXXXXX)" required>
+              <small class="form-text text-muted">Format: 07XXXXXXXX (10 digits)</small>
+            </div>
+            <div class="alert alert-info d-none" id="processingAlert">
+              <div class="d-flex align-items-center">
+                <div class="spinner-border spinner-border-sm me-2" role="status">
+                  <span class="visually-hidden">Loading...</span>
+                </div>
+                <span id="statusMessage">Processing payment request...</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-success" id="submitBtn">Pay Now</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Clear Balance Modal (Outline Green) -->
+<div class="modal fade" id="clearBalanceModal" tabindex="-1" aria-labelledby="clearBalanceModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <form method="POST" action="{{ url_for('account.clear_balance', order_id=order.id) }}" id="clearBalanceForm">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="modal-content border-success">
+        <div class="modal-header bg-light text-success">
+          <h5 class="modal-title" id="clearBalanceModalLabel">Clear Balance</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p>Remaining balance: <strong>Ksh {{ "%.2f"|format(balance_due) }}</strong></p>
+          <div class="mb-3">
+            <label for="payment_method_clear" class="form-label">Payment Method</label>
+            <select id="payment_method_clear" class="form-select" name="payment_method" required>
+              <option value="">-- Choose Payment Method --</option>
+              <option value="MPESA">M‑PESA</option>
+              <option value="CARD" disabled>Credit/Debit Card (Temporarily Unavailable)</option>
+              <option value="BANK" disabled>Bank Transfer (Temporarily Unavailable)</option>
+            </select>
+          </div>
+          <div id="mpesaSectionClear" class="d-none">
+            <div class="mb-3">
+              <label for="phone_number_clear" class="form-label">M-PESA Phone Number</label>
+              <input type="tel" class="form-control" id="phone_number_clear" name="phone_number" 
+                     placeholder="07XXXXXXXX" pattern="07\d{8}" 
+                     title="Please enter a valid Kenyan phone number (07XXXXXXXX)" required>
+              <small class="form-text text-muted">Format: 07XXXXXXXX (10 digits)</small>
+            </div>
+            <div class="alert alert-info d-none" id="processingAlertClear">
+              <div class="d-flex align-items-center">
+                <div class="spinner-border spinner-border-sm me-2" role="status">
+                  <span class="visually-hidden">Loading...</span>
+                </div>
+                <span id="statusMessageClear">Processing payment request...</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-outline-success" id="submitBtnClear">Clear Balance</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Cancel Order Modal (Red: Warning) -->
+<div class="modal fade" id="cancelOrderModal" tabindex="-1" aria-labelledby="cancelOrderModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <form method="POST" action="{{ url_for('orders.cancel_order', order_id=order.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="modal-content border-danger">
+        <div class="modal-header bg-danger text-white">
+          <h5 class="modal-title" id="cancelOrderModalLabel">Cancel Order</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p>Are you sure you want to cancel this order?</p>
+          {% if total_paid > 0 %}
+          <div class="alert alert-warning mt-3">
+            <p><strong>Refund Information:</strong></p>
+            <p>This order has a payment of Ksh {{ "%.2f"|format(total_paid) }}. 
+               Cancellation will trigger an automatic refund to the original payment method.</p>
+          </div>
+          {% endif %}
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-danger">Yes, Cancel</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Invoice Modal (Blue: Informational) -->
+<div class="modal fade" id="invoiceModal" tabindex="-1" aria-labelledby="invoiceModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content border-primary">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="invoiceModalLabel">Invoice - Order #{{ order.order_number }}</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row">
+          <div class="col-md-6">
+            <h5>Customer:</h5>
+            <p>{{ order.customer.name }}<br>
+            {{ order.customer.email }}<br>
+            {{ order.customer.phone }}</p>
+          </div>
+          <div class="col-md-6 text-end">
+            <h5>Order Details:</h5>
+            <p>Order #: {{ order.order_number }}<br>
+            Date: {{ order.order_date.strftime('%Y-%m-%d') }}<br>
+            Status: {{ order.status }}</p>
+          </div>
+        </div>
+        
+        {% if order.shipping_address %}
+        <div class="mt-3">
+          <h5>Shipping Address:</h5>
+          <p>{{ order.shipping_address.street }}<br>
+          {{ order.shipping_address.city }}, {{ order.shipping_address.state }}<br>
+          {{ order.shipping_address.country }}, {{ order.shipping_address.postal_code }}</p>
+        </div>
+        {% endif %}
+        
+        <hr>
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>Qty</th>
+              <th>Unit Price</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in order.items %}
+            <tr>
+              <td>{{ item.product.name }}</td>
+              <td>{{ item.quantity }}</td>
+              <td>Ksh {{ "%.2f"|format(item.unit_price) }}</td>
+              <td>Ksh {{ "%.2f"|format(item.quantity * item.unit_price) }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="3" class="text-end">Subtotal:</td>
+              <td>Ksh {{ "%.2f"|format(order.subtotal) }}</td>
+            </tr>
+            <tr>
+              <td colspan="3" class="text-end">Shipping:</td>
+              <td>Ksh {{ "%.2f"|format(order.shipping_cost) }}</td>
+            </tr>
+            <tr>
+              <td colspan="3" class="text-end">Tax:</td>
+              <td>Ksh {{ "%.2f"|format(order.tax_amount) }}</td>
+            </tr>
+            <tr class="table-primary">
+              <td colspan="3" class="text-end fw-bold">Total:</td>
+              <td class="fw-bold">Ksh {{ "%.2f"|format(order.total_amount) }}</td>
+            </tr>
+            <tr class="table-success">
+              <td colspan="3" class="text-end">Paid:</td>
+              <td>Ksh {{ "%.2f"|format(total_paid) }}</td>
+            </tr>
+            <tr class="table-danger">
+              <td colspan="3" class="text-end">Balance Due:</td>
+              <td>Ksh {{ "%.2f"|format(balance_due) }}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-light" onclick="window.print()">🖨 Print</button>
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Reorder Modal (Secondary grey) -->
+<div class="modal fade" id="reorderModal" tabindex="-1" aria-labelledby="reorderModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <form method="POST" action="{{ url_for('orders.reorder', order_id=order.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="modal-content border-secondary">
+        <div class="modal-header bg-secondary text-white">
+          <h5 class="modal-title" id="reorderModalLabel">Reorder</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p>Do you want to place this same order again?</p>
+          <div class="alert alert-info">
+            <p class="mb-1"><strong>Note:</strong> Current prices and availability may vary.</p>
+            <p class="mb-0">You'll be able to review items before final checkout.</p>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-secondary">Yes, Reorder</button>
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Support Modal (Info blue) -->
+<div class="modal fade" id="supportModal" tabindex="-1" aria-labelledby="supportModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <form method="POST" action="{{ url_for('support.contact_support', order_id=order.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="modal-content border-info">
+        <div class="modal-header bg-info text-white">
+          <h5 class="modal-title" id="supportModalLabel">Contact Support</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="support_message" class="form-label">Your Message</label>
+            <textarea id="support_message" class="form-control" name="message" rows="4" required></textarea>
+          </div>
+          <div class="alert alert-light">
+            <p class="mb-1"><strong>Support Hours:</strong> Mon-Fri, 8:00 AM - 5:00 PM</p>
+            <p class="mb-0"><strong>Email:</strong> support@yourstore.com | <strong>Phone:</strong> +254 700 123 456</p>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-info">Send Message</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Tracking Modal (Teal: Informational) -->
+<div class="modal fade" id="trackingModal" tabindex="-1" aria-labelledby="trackingModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content border-info">
+      <div class="modal-header bg-info text-white">
+        <h5 class="modal-title" id="trackingModalLabel">Order Tracking #{{ order.order_number }}</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="tracking-progress">
+          <div class="progress" style="height: 6px;">
+            <div class="progress-bar bg-success" role="progressbar" 
+                 style="width: {% if order.status == 'DELIVERED' %}100{% elif order.status == 'SHIPPED' %}75{% elif order.status == 'PROCESSING' %}50{% else %}25{% endif %}%;"></div>
+          </div>
+          <div class="d-flex justify-content-between mt-2">
+            <div class="text-center">
+              <span class="tracking-dot dot-active"></span>
+              <p class="mb-0 mt-1 small">Order<br>Placed</p>
+              <small>{{ order.order_date.strftime('%b %d') }}</small>
+            </div>
+            <div class="text-center">
+              <span class="tracking-dot {% if order.status in ['PROCESSING','SHIPPED','DELIVERED'] %}dot-active{% endif %}"></span>
+              <p class="mb-0 mt-1 small">Processing</p>
+              {% if order.status in ['PROCESSING','SHIPPED','DELIVERED'] %}
+              <small>{{ (order.order_date + timedelta(days=1)).strftime('%b %d') }}</small>
+              {% endif %}
+            </div>
+            <div class="text-center">
+              <span class="tracking-dot {% if order.status in ['SHIPPED','DELIVERED'] %}dot-active{% endif %}"></span>
+              <p class="mb-0 mt-1 small">Shipped</p>
+              {% if order.status in ['SHIPPED','DELIVERED'] %}
+              <small>{{ (order.order_date + timedelta(days=2)).strftime('%b %d') }}</small>
+              {% endif %}
+            </div>
+            <div class="text-center">
+              <span class="tracking-dot {% if order.status == 'DELIVERED' %}dot-active{% endif %}"></span>
+              <p class="mb-0 mt-1 small">Delivered</p>
+              {% if order.status == 'DELIVERED' %}
+              <small>{{ (order.order_date + timedelta(days=4)).strftime('%b %d') }}</small>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        
+        <div class="mt-4">
+          <h6>Shipping Details</h6>
+          <div class="card">
+            <div class="card-body">
+              <p class="mb-1"><strong>Carrier:</strong> DHL Express</p>
+              <p class="mb-1"><strong>Tracking Number:</strong> DH{{ order.id|string|rjust(8, '0') }}KE</p>
+              <p class="mb-0"><strong>Estimated Delivery:</strong> {{ (order.order_date + timedelta(days=5)).strftime('%b %d, %Y') }}</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="mt-3">
+          <h6>Tracking History</h6>
+          <ul class="list-group">
+            <li class="list-group-item">
+              <div class="d-flex justify-content-between">
+                <span>Order placed</span>
+                <small class="text-muted">{{ order.order_date.strftime('%b %d, %I:%M %p') }}</small>
+              </div>
+            </li>
+            {% if order.status in ['PROCESSING','SHIPPED','DELIVERED'] %}
+            <li class="list-group-item">
+              <div class="d-flex justify-content-between">
+                <span>Processing started</span>
+                <small class="text-muted">{{ (order.order_date + timedelta(days=1)).strftime('%b %d, %I:%M %p') }}</small>
+              </div>
+            </li>
+            {% endif %}
+            {% if order.status in ['SHIPPED','DELIVERED'] %}
+            <li class="list-group-item">
+              <div class="d-flex justify-content-between">
+                <span>Shipped from warehouse</span>
+                <small class="text-muted">{{ (order.order_date + timedelta(days=2)).strftime('%b %d, %I:%M %p') }}</small>
+              </div>
+              <small class="text-muted">Nairobi Distribution Center</small>
+            </li>
+            {% endif %}
+            {% if order.status == 'DELIVERED' %}
+            <li class="list-group-item">
+              <div class="d-flex justify-content-between">
+                <span>Out for delivery</span>
+                <small class="text-muted">{{ (order.order_date + timedelta(days=4)).strftime('%b %d, %I:%M %p') }}</small>
+              </div>
+            </li>
+            <li class="list-group-item">
+              <div class="d-flex justify-content-between">
+                <span>Delivered</span>
+                <small class="text-muted">{{ (order.order_date + timedelta(days=4, hours=2)).strftime('%b %d, %I:%M %p') }}</small>
+              </div>
+              <small class="text-muted">Signed by: {{ order.customer.name }}</small>
+            </li>
+            {% endif %}
+          </ul>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-info" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Manage Payment Modal (Admin/Staff) -->
+<div class="modal fade" id="managePaymentModal" tabindex="-1" aria-labelledby="managePaymentModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <form method="POST" action="{{ url_for('orders.record_payment', order_id=order.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="modal-content border-primary">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title" id="managePaymentModalLabel">Record Payment</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p>Balance due: <strong>Ksh {{ "%.2f"|format(balance_due) }}</strong></p>
+          <div class="mb-3">
+            <label for="payment_amount" class="form-label">Amount</label>
+            <input type="number" class="form-control" id="payment_amount" name="amount" 
+                   min="0.01" max="{{ balance_due }}" step="0.01" 
+                   value="{{ balance_due }}" required>
+          </div>
+          <div class="mb-3">
+            <label for="payment_method_admin" class="form-label">Payment Method</label>
+            <select id="payment_method_admin" class="form-select" name="payment_method" required>
+              <option value="">-- Choose Payment Method --</option>
+              <option value="MPESA">M‑PESA</option>
+              <option value="CASH">Cash</option>
+              <option value="BANK">Bank Transfer</option>
+              <option value="CARD">Credit/Debit Card</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="payment_reference" class="form-label">Reference/Notes</label>
+            <input type="text" class="form-control" id="payment_reference" name="reference">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-primary">Record Payment</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Refund Details Modal (Visible only when status is Refunded) -->
+<div class="modal fade" id="refundDetailsModal" tabindex="-1" aria-labelledby="refundDetailsModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content border-warning">
+      <div class="modal-header bg-warning text-dark">
+        <h5 class="modal-title" id="refundDetailsModalLabel">Refund Details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <p><strong>Refund Amount:</strong> Ksh {{ "%.2f"|format(total_paid) }}</p>
+          <p><strong>Refund Date:</strong> {{ order.updated_at.strftime('%Y-%m-%d %H:%M') }}</p>
+          <p><strong>Refund Method:</strong> Original Payment Method</p>
+        </div>
+        
+        <div class="card mt-3">
+          <div class="card-header bg-light">
+            <h6 class="mb-0">Bank Account Details</h6>
+          </div>
+          <div class="card-body">
+            <p class="mb-1"><strong>Bank Name:</strong> Equity Bank Kenya</p>
+            <p class="mb-1"><strong>Account Name:</strong> Your Store Ltd</p>
+            <p class="mb-1"><strong>Account Number:</strong> 1234567890</p>
+            <p class="mb-0"><strong>Branch:</strong> Nairobi CBD</p>
+          </div>
+        </div>
+        
+        <div class="alert alert-info mt-3">
+          <p class="mb-0"><strong>Note:</strong> Refunds may take 3-5 business days to reflect in the customer's account.</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Initiate Refund Modal (Admin/Staff) -->
+<div class="modal fade" id="initiateRefundModal" tabindex="-1" aria-labelledby="initiateRefundModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <form method="POST" action="{{ url_for('orders.initiate_refund', order_id=order.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="modal-content border-danger">
+        <div class="modal-header bg-danger text-white">
+          <h5 class="modal-title" id="initiateRefundModalLabel">Initiate Refund</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p>Total paid: <strong>Ksh {{ "%.2f"|format(total_paid) }}</strong></p>
+          <div class="mb-3">
+            <label for="refund_amount" class="form-label">Refund Amount</label>
+            <input type="number" class="form-control" id="refund_amount" name="amount" 
+                   min="0.01" max="{{ total_paid }}" step="0.01" 
+                   value="{{ total_paid }}" required>
+          </div>
+          <div class="mb-3">
+            <label for="refund_method" class="form-label">Refund Method</label>
+            <select id="refund_method" class="form-select" name="refund_method" required>
+              <option value="">-- Choose Refund Method --</option>
+              <option value="ORIGINAL">Original Payment Method</option>
+              <option value="BANK">Bank Transfer</option>
+              <option value="CASH">Cash</option>
+              <option value="STORE_CREDIT">Store Credit</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="refund_reason" class="form-label">Reason for Refund</label>
+            <textarea class="form-control" id="refund_reason" name="reason" rows="3" required></textarea>
+          </div>
+          <div class="alert alert-warning">
+            <p class="mb-0"><strong>Note:</strong> This action cannot be undone. Refunds may take 3-5 business days to process.</p>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-danger">Initiate Refund</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Function to handle M-Pesa payment simulation
+    function handleMpesaPayment(formId, phoneInputId, processingAlertId, statusMessageId, submitBtnId) {
+      const form = document.getElementById(formId);
+      const phoneInput = document.getElementById(phoneInputId);
+      const processingAlert = document.getElementById(processingAlertId);
+      const statusMessage = document.getElementById(statusMessageId);
+      const submitBtn = document.getElementById(submitBtnId);
+      
+      if (!form) return;
+      
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Get form data
+        const formData = new FormData(form);
+        const paymentMethod = formData.get('payment_method');
+        const phoneNumber = formData.get('phone_number');
+        
+        // Only handle M-Pesa
+        if (paymentMethod !== 'MPESA') return;
+        
+        // Validate phone number
+        const phoneRegex = /^07\d{8}$/;
+        if (!phoneRegex.test(phoneNumber)) {
+          alert('Please enter a valid Kenyan phone number (07XXXXXXXX)');
+          return;
+        }
+        
+        // Show processing status
+        submitBtn.disabled = true;
+        processingAlert.classList.remove('d-none');
+        statusMessage.textContent = "Sending request to M-PESA...";
+        
+        // Simulate M-Pesa payment flow
+        setTimeout(() => {
+          statusMessage.textContent = "Waiting for customer confirmation...";
+          
+          // Simulate M-Pesa prompt
+          setTimeout(() => {
+            statusMessage.textContent = "Please check your phone to enter M-PESA PIN";
+            
+            // Final simulation
+            setTimeout(() => {
+              statusMessage.textContent = "Payment received! Processing...";
+              
+              // Submit the form after simulation
+              setTimeout(() => {
+                form.submit();
+              }, 1500);
+            }, 2000);
+          }, 1500);
+        }, 1000);
+      });
+    }
+    
+    // Toggle M-Pesa fields based on payment method selection
+    function setupPaymentMethodToggle(selectId, mpesaSectionId) {
+      const select = document.getElementById(selectId);
+      const mpesaSection = document.getElementById(mpesaSectionId);
+      
+      if (!select || !mpesaSection) return;
+      
+      // Initial toggle
+      toggleMpesaSection();
+      
+      // Add change listener
+      select.addEventListener('change', toggleMpesaSection);
+      
+      function toggleMpesaSection() {
+        if (select.value === 'MPESA') {
+          mpesaSection.classList.remove('d-none');
+        } else {
+          mpesaSection.classList.add('d-none');
+        }
+      }
+    }
+    
+    // Initialize for both modals
+    setupPaymentMethodToggle('payment_method_make', 'mpesaSection');
+    setupPaymentMethodToggle('payment_method_clear', 'mpesaSectionClear');
+    
+    // Set up payment handlers
+    handleMpesaPayment('paymentForm', 'phone_number', 'processingAlert', 'statusMessage', 'submitBtn');
+    handleMpesaPayment('clearBalanceForm', 'phone_number_clear', 'processingAlertClear', 'statusMessageClear', 'submitBtnClear');
+  });
+</script>
+
+<style>
+  .tracking-dot {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: #dee2e6;
+    position: relative;
+  }
+  
+  .tracking-dot.dot-active {
+    background-color: #0d6efd;
+  }
+  
+  .tracking-dot.dot-active::after {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid rgba(13, 110, 253, 0.3);
+    top: -4px;
+    left: -4px;
+  }
+</style>
+
+{% else %}
+<div class="container py-5 text-center">
+  <h4 class="text-danger">Access Denied</h4>
+  <p>Please <a href="{{ url_for('auth.login') }}">log in</a> to view order details.</p>
+</div>
+{% endif %}
+{% endblock %}

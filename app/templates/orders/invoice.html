@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Invoice #{{ order.order_number }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="card shadow">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">
+                <i class="bi bi-receipt me-2" aria-hidden="true"></i>Invoice #{{ order.order_number }}
+            </h4>
+            <small class="text-muted">Date: {{ order.order_date.strftime('%Y-%m-%d') }}</small>
+        </div>
+        <div class="card-body">
+            <!-- Customer Info -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <h6><i class="bi bi-person-circle me-1" aria-hidden="true"></i>Billing To:</h6>
+                    <address>
+                        {{ order.customer.name }}<br>
+                        {{ order.billing_address or "No billing address provided" }}<br>
+                        {{ order.customer.email }}<br>
+                        {{ order.customer.phone }}
+                    </address>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <h6><i class="bi bi-geo-alt-fill me-1" aria-hidden="true"></i>Shipping Address:</h6>
+                    <p class="mb-0">{{ order.shipping_address or "Same as billing address" }}</p>
+                </div>
+            </div>
+
+            <!-- Order Items -->
+            <div class="table-responsive mb-4">
+                <table class="table table-bordered">
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col">Item</th>
+                            <th scope="col" class="text-center">Qty</th>
+                            <th scope="col" class="text-end">Unit Price</th>
+                            <th scope="col" class="text-end">Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in order.items %}
+                        <tr>
+                            <td>{{ item.product.name }}</td>
+                            <td class="text-center">{{ item.quantity }}</td>
+                            <td class="text-end">{{ "%.2f"|format(item.unit_price) }}</td>
+                            <td class="text-end">{{ "%.2f"|format(item.quantity * item.unit_price - item.discount) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Totals -->
+            <div class="row justify-content-end">
+                <div class="col-md-6">
+                    <table class="table borderless">
+                        <tr>
+                            <th scope="row" class="text-end">Subtotal:</th>
+                            <td class="text-end">{{ "%.2f"|format(order.total_amount - order.tax_amount - order.shipping_cost) }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row" class="text-end">Tax:</th>
+                            <td class="text-end">{{ "%.2f"|format(order.tax_amount) }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row" class="text-end">Shipping:</th>
+                            <td class="text-end">{{ "%.2f"|format(order.shipping_cost) }}</td>
+                        </tr>
+                        <tr class="fw-bold">
+                            <th scope="row" class="text-end">Total:</th>
+                            <td class="text-end">{{ "%.2f"|format(order.total_amount) }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row" class="text-end">Payment Status:</th>
+                            <td class="text-end">
+                                {% if order.payment_status.name == 'PAID' %}
+                                    <span class="badge bg-success" title="Fully Paid">Paid</span>
+                                {% elif order.payment_status.name == 'PARTIALLY_PAID' %}
+                                    <span class="badge bg-warning text-dark" title="Partially Paid">Partial</span>
+                                {% else %}
+                                    <span class="badge bg-danger" title="Unpaid">Unpaid</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Notes -->
+            {% if order.notes %}
+            <div class="alert alert-secondary mt-4" role="note">
+                <strong><i class="bi bi-journal-text me-1" aria-hidden="true"></i>Order Notes:</strong>
+                {{ order.notes }}
+            </div>
+            {% endif %}
+        </div>
+        <div class="card-footer text-end">
+            <a href="{{ url_for('orders.my_orders') }}" class="btn btn-secondary" aria-label="Back to My Orders">
+                <i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Back to Orders
+            </a>
+            <button onclick="window.print()" class="btn btn-primary" aria-label="Print Invoice">
+                <i class="bi bi-printer me-1" aria-hidden="true"></i>Print Invoice
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

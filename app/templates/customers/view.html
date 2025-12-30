@@ -1,0 +1,338 @@
+{% extends "base.html" %}
+
+{% block title %}{{ customer.name }} | Order Management{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('main.dashboard') }}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('customers.list_customers') }}">Customers</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ customer.name }}</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
+        <div class="d-flex align-items-center mb-3 mb-md-0">
+            <div class="avatar me-3">
+                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px; font-size: 1.5rem;">
+                    {{ customer.name[0] }}
+                </div>
+            </div>
+            <div>
+                <h1 class="mb-0">{{ customer.name }}</h1>
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-success me-2">
+                        <i class="bi bi-check-circle me-1"></i>Active Customer
+                    </span>
+                    <span class="text-muted">Customer ID: {{ customer.id }}</span>
+                </div>
+            </div>
+        </div>
+        <div class="d-flex">
+            <a href="{{ url_for('customers.edit_customer', customer_id=customer.id) }}" class="btn btn-outline-primary me-2">
+                <i class="bi bi-pencil me-2"></i>Edit Profile
+            </a>
+            <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#sendMessageModal">
+                <i class="bi bi-envelope me-2"></i>Send Message
+            </button>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Left Column: Customer Details -->
+        <div class="col-lg-4 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Customer Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <h6 class="text-uppercase text-muted small">Contact Details</h6>
+                        <ul class="list-unstyled">
+                            {% if customer.email %}
+                            <li class="mb-2">
+                                <i class="bi bi-envelope me-2 text-primary"></i>
+                                <a href="mailto:{{ customer.email }}" class="text-decoration-none">{{ customer.email }}</a>
+                            </li>
+                            {% endif %}
+                            {% if customer.phone %}
+                            <li class="mb-2">
+                                <i class="bi bi-telephone me-2 text-primary"></i>
+                                <a href="tel:{{ customer.phone }}" class="text-decoration-none">{{ customer.phone }}</a>
+                            </li>
+                            {% endif %}
+                           
+                           
+                            <li class="mb-2">
+    <i class="bi bi-calendar me-2 text-primary"></i>
+    Member since 
+    {% if customer.created_at %}
+        {{ customer.created_at.strftime('%B %d, %Y') }}
+    {% else %}
+        <span class="text-muted">Date not available</span>
+    {% endif %}
+</li>
+
+                            
+                            
+                            
+                        </ul>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6 class="text-uppercase text-muted small">Address Information</h6>
+                        <ul class="list-unstyled">
+                            <li class="mb-2">
+                                <i class="bi bi-geo-alt me-2 text-primary"></i>
+                                {{ customer.address or 'Not specified' }}
+                            </li>
+                            <li class="mb-2">
+                                <i class="bi bi-truck me-2 text-primary"></i>
+                                <strong>Shipping:</strong> {{ customer.default_shipping_address or 'Same as primary' }}
+                            </li>
+                            <li>
+                                <i class="bi bi-credit-card me-2 text-primary"></i>
+                                <strong>Billing:</strong> {{ customer.default_billing_address or 'Same as primary' }}
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    {% if customer.company or customer.tax_id %}
+                    <div class="mb-3">
+                        <h6 class="text-uppercase text-muted small">Business Information</h6>
+                        <ul class="list-unstyled">
+                            {% if customer.company %}
+                            <li class="mb-2">
+                                <i class="bi bi-building me-2 text-primary"></i>
+                                {{ customer.company }}
+                            </li>
+                            {% endif %}
+                            {% if customer.tax_id %}
+                            <li>
+                                <i class="bi bi-receipt me-2 text-primary"></i>
+                                Tax ID: {{ customer.tax_id }}
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="mt-4">
+                        <h6 class="text-uppercase text-muted small">Internal Notes</h6>
+                        <div class="bg-light p-3 rounded">
+                            {% if customer.notes %}
+                                {{ customer.notes }}
+                            {% else %}
+                                <span class="text-muted">No notes available</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Orders and Activity -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-cart me-2"></i>Order History</h5>
+                        <a href="{{ url_for('orders.create_order', customer_id=customer.id) }}" class="btn btn-sm btn-primary">
+                            <i class="bi bi-plus me-1"></i>New Order
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if orders %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Order #</th>
+                                    <th>Date</th>
+                                    <th>Items</th>
+                                    <th>Total</th>
+                                    <th>Status</th>
+                                    <th>Payment</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for order in orders %}
+                                <tr>
+                                    <td><a href="{{ url_for('orders.view_order', order_id=order.id) }}" class="fw-bold text-decoration-none">#{{ order.order_number }}</a></td>
+                                    <td>{{ order.order_date.strftime('%b %d, %Y') }}</td>
+                                    <td>{{ order.items|length }} items</td>
+                                    <td>${{ "%.2f"|format(order.total_amount) }}</td>
+                                    <td>
+                                        <span class="badge 
+                                            {% if order.status == 'Delivered' %}bg-success
+                                            {% elif order.status == 'Cancelled' or order.status == 'Refunded' %}bg-danger
+                                            {% elif order.status == 'Processing' %}bg-primary
+                                            {% else %}bg-warning{% endif %}">
+                                            {{ order.status }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge 
+                                            {% if order.payment_status == 'Paid' %}bg-success
+                                            {% elif order.payment_status == 'Unpaid' %}bg-danger
+                                            {% else %}bg-warning{% endif %}">
+                                            {{ order.payment_status }}
+                                        </span>
+                                    </td>
+                                    <td class="text-end">
+                                        <a href="{{ url_for('orders.view_order', order_id=order.id) }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <div>
+                            <button class="btn btn-outline-secondary">
+                                <i class="bi bi-download me-2"></i>Export Orders
+                            </button>
+                        </div>
+                        <a href="{{ url_for('orders.list_orders', customer_id=customer.id) }}" class="btn btn-link">
+                            View all orders <i class="bi bi-arrow-right"></i>
+                        </a>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-cart-x fs-1 text-muted"></i>
+                        <h5 class="mt-3">No orders found</h5>
+                        <p class="text-muted mb-4">This customer hasn't placed any orders yet</p>
+                        <a href="{{ url_for('orders.create_order', customer_id=customer.id) }}" class="btn btn-primary">
+                            <i class="bi bi-plus-circle me-2"></i>Create First Order
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-4">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-header bg-white py-3">
+                            <h5 class="mb-0"><i class="bi bi-graph-up me-2"></i>Order Statistics</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between mb-3">
+                                <div>
+                                    <h6 class="text-muted">Total Orders</h6>
+                                    <h3 class="mb-0">{{ orders|length }}</h3>
+                                </div>
+                                <div class="bg-primary bg-opacity-10 p-3 rounded">
+                                    <i class="bi bi-cart fs-2 text-primary"></i>
+                                </div>
+                            </div>
+                            
+                            <div class="d-flex justify-content-between mb-3">
+                                <div>
+                                    <h6 class="text-muted">Total Value</h6>
+                                    <h3 class="mb-0">${{ "%.2f"|format(total_order_value) }}</h3>
+                                </div>
+                                <div class="bg-success bg-opacity-10 p-3 rounded">
+                                    <i class="bi bi-currency-dollar fs-2 text-success"></i>
+                                </div>
+                            </div>
+                            
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="text-muted">Avg. Order Value</h6>
+                                    <h3 class="mb-0">${{ "%.2f"|format(avg_order_value) }}</h3>
+                                </div>
+                                <div class="bg-info bg-opacity-10 p-3 rounded">
+                                    <i class="bi bi-bar-chart fs-2 text-info"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6 mb-4">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-header bg-white py-3">
+                            <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Recent Activity</h5>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-group list-group-flush">
+                                {% for activity in recent_activity %}
+                                <li class="list-group-item border-0 px-0 py-2">
+                                    <div class="d-flex">
+                                        <div class="avatar me-3">
+                                            <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+                                                <i class="bi bi-{{ activity.icon }}"></i>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <h6 class="mb-0">{{ activity.title }}</h6>
+                                            <small class="text-muted">{{ activity.description }}</small>
+                                            <div class="text-muted small">{{ activity.timestamp }}</div>
+                                        </div>
+                                    </div>
+                                </li>
+                                {% else %}
+                                <li class="list-group-item border-0 px-0 py-2 text-center text-muted">
+                                    No recent activity
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Send Message Modal -->
+<div class="modal fade" id="sendMessageModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Send Message to {{ customer.name }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="mb-3">
+                        <label class="form-label">Recipient</label>
+                        <input type="text" class="form-control" value="{{ customer.email }}" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Subject</label>
+                        <input type="text" class="form-control" placeholder="Enter message subject">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Message</label>
+                        <textarea class="form-control" rows="4" placeholder="Type your message here"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary">Send Message</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Initialize tooltips
+    document.addEventListener('DOMContentLoaded', function() {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        });
+    });
+</script>
+{% endblock %}

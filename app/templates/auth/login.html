@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block title %}Login | Order Management{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card border-0 shadow-lg">
+                <div class="card-header bg-primary text-white py-3">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-shield-lock fs-3 me-2"></i>
+                        <h2 class="mb-0">Secure Login</h2>
+                    </div>
+                </div>
+                <div class="card-body p-4">
+                    <form method="POST" action="{{ url_for('auth.login') }}" class="needs-validation" novalidate>
+                        {{ form.hidden_tag() }}
+                        
+                        <div class="mb-4">
+                            {{ form.username.label(class="form-label fw-bold") }}
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="bi bi-person-fill"></i>
+                                </span>
+                                {{ form.username(class="form-control form-control-lg", placeholder="Enter your username", required=True) }}
+                            </div>
+                            {% for error in form.username.errors %}
+                            <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="mb-4">
+                            {{ form.password.label(class="form-label fw-bold") }}
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="bi bi-lock-fill"></i>
+                                </span>
+                                {{ form.password(class="form-control form-control-lg", placeholder="Enter your password", required=True) }}
+                                <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                            {% for error in form.password.errors %}
+                            <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="mb-4 form-check">
+                            {{ form.remember_me(class="form-check-input", id="rememberMe") }}
+                            {{ form.remember_me.label(class="form-check-label", for="rememberMe") }}
+                        </div>
+                        
+                        <div class="d-grid mb-4">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-box-arrow-in-right me-2"></i>Login
+                            </button>
+                        </div>
+                        
+                        <div class="text-center mb-3">
+                            <a href="{{ url_for('auth.password_reset_request') }}" class="text-decoration-none me-3">
+                                <i class="bi bi-question-circle me-1"></i>Forgot Password?
+                            </a>
+                            <a href="{{ url_for('auth.register') }}" class="text-decoration-none">
+                                <i class="bi bi-person-plus me-1"></i>Don't have an account? Register here
+                            </a>
+                        </div>
+                        
+                        <div class="border-top pt-3 text-center">
+                            <p class="text-muted">
+                                <i class="bi bi-shield-check me-1"></i>
+                                Your credentials are encrypted and securely stored
+                            </p>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="alert alert-info mt-4">
+                <div class="d-flex">
+                    <i class="bi bi-info-circle fs-4 me-3"></i>
+                    <div>
+                        <h5 class="alert-heading">Security Notice</h5>
+                        <p class="mb-0">
+                            This system contains confidential information. Unauthorized access is prohibited.
+                            All activities are monitored and logged.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Toggle password visibility
+    document.getElementById('togglePassword').addEventListener('click', function() {
+        const passwordInput = document.querySelector('input[name="password"]');
+        const icon = this.querySelector('i');
+        
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            icon.classList.replace('bi-eye', 'bi-eye-slash');
+        } else {
+            passwordInput.type = 'password';
+            icon.classList.replace('bi-eye-slash', 'bi-eye');
+        }
+    });
+    
+    // Form validation
+    (function() {
+        'use strict';
+        
+        // Fetch all forms we want to apply custom Bootstrap validation styles to
+        const forms = document.querySelectorAll('.needs-validation');
+        
+        // Loop over them and prevent submission
+        Array.from(forms).forEach(form => {
+            form.addEventListener('submit', event => {
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                
+                form.classList.add('was-validated');
+            }, false);
+        });
+    })();
+</script>
+{% endblock %}

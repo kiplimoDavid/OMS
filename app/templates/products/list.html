@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% from "components/_product_card.html" import product_card %}
+
+{% block title %}Products{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap mb-4">
+    <h1 class="mb-2">Products</h1>
+    {% if current_user.is_authenticated and (current_user.is_admin() or current_user.is_staff()) %}
+        <a href="{{ url_for('products.add_product') }}" class="btn btn-primary mb-2">Add Product</a>
+    {% endif %}
+</div>
+
+<!-- Scrollable rows layout for small screens -->
+<div class="d-block d-md-none">
+    {% for group in products|chunk(10) %}
+    <div class="overflow-auto pb-2" style="white-space: nowrap;">
+        <div class="d-flex flex-nowrap" style="gap: 1px;">
+            {% for product in group %}
+                {{ product_card(product, compact=True, user=current_user) }}
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Grid layout for larger screens -->
+<div class="row g-1 d-none d-md-flex">
+    {% for product in products %}
+    <div class="col-6 col-sm-4 col-md-3 col-lg-2 d-flex">
+        {{ product_card(product, compact=False, user=current_user) }}
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

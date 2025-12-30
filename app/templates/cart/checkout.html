@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% block title %}Checkout - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <h2 class="mb-4">Checkout</h2>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="mb-4">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'toast-danger' else 'success' if category == 'toast-success' else 'info' }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <form method="POST" novalidate>
+        {{ form.hidden_tag() }}
+      
+        <div class="row g-4">
+            <!-- Checkout Details Form -->
+            <div class="col-md-6">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        Shipping & Billing Info
+                    </div>
+                    <div class="card-body">
+                        <!-- Shipping Address -->
+                        <div class="mb-3">
+                            {{ form.shipping_address.label(class="form-label") }}
+                            <select name="shipping_address" class="form-select" required>
+                                <option value="">Select a shipping address</option>
+                                {% for address in shipping_addresses %}
+                                    <option value="{{ address.id }}" {% if form.shipping_address.data == address.id %}selected{% endif %}>
+                                        {{ address.street }}, {{ address.city }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            {% for error in form.shipping_address.errors %}
+                                <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <!-- Payment Method -->
+                        <div class="mb-3">
+                            {{ form.payment_method.label(class="form-label") }}
+                            <select name="payment_method" class="form-select" required>
+                                <option value="">Select a payment method</option>
+                                {% for payment in payment_methods %}
+                                    <option value="{{ payment.id }}" {% if form.payment_method.data == payment.id %}selected{% endif %}>
+                                        {% if payment.method_type == 'Credit Card' %}
+                                            {{ payment.card_type }} ****{{ payment.details.card_number[-4:] }}
+                                        {% elif payment.method_type == 'PayPal' %}
+                                            PayPal: {{ payment.details.email }}
+                                        {% elif payment.method_type == 'M-PESA' %}
+                                            M-PESA: {{ payment.details.phone }}
+                                        {% else %}
+                                            {{ payment.method_type }}
+                                        {% endif %}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            {% for error in form.payment_method.errors %}
+                                <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <!-- Billing Address (Optional) -->
+                        <div class="mb-3">
+                            {{ form.billing_address.label(class="form-label") }}
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="sameAsShipping" {% if not form.billing_address.data %}checked{% endif %}>
+                                <label class="form-check-label" for="sameAsShipping">
+                                    Same as shipping address
+                                </label>
+                            </div>
+                            <select name="billing_address" id="billing_address" class="form-select" {% if not form.billing_address.data %}disabled{% endif %}>
+                                <option value="">Select a billing address (optional)</option>
+                                {% for address in shipping_addresses %}
+                                    <option value="{{ address.id }}" {% if form.billing_address.data == address.id %}selected{% endif %}>
+                                        {{ address.street }}, {{ address.city }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            {% for error in form.billing_address.errors %}
+                                <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Order Summary -->
+            <div class="col-md-6">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-info text-white">
+                        Order Summary
+                    </div>
+                    <div class="card-body">
+                        <h5 class="mb-4">Items in Cart</h5>
+                        <ul class="list-group">
+                            {% for item in cart_items %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    {{ item.product.name }} x {{ item.quantity }}
+                                    <span class="badge bg-primary">${{ item.subtotal }}</span>
+                                </li>
+                            {% endfor %}
+                        </ul>
+
+                        <h5 class="mt-4">Total: <span class="badge bg-success">${{ cart_items | sum(attribute='subtotal') | round(2) }}</span></h5>
+
+                        <div class="mt-4">
+                            <button type="submit" class="btn btn-primary w-100">Place Order</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const sameAsShipping = document.getElementById('sameAsShipping');
+        const billingAddressSelect = document.getElementById('billing_address');
+        const shippingAddressSelect = document.querySelector('select[name="shipping_address"]');
+        
+        // Initialize based on current selection
+        function updateBillingState() {
+            if (sameAsShipping.checked) {
+                billingAddressSelect.disabled = true;
+                billingAddressSelect.value = '';
+            } else {
+                billingAddressSelect.disabled = false;
+            }
+        }
+        
+        // Initial state
+        updateBillingState();
+        
+        // Add event listener to checkbox
+        sameAsShipping.addEventListener('change', function() {
+            updateBillingState();
+        });
+        
+        // Add event listener to shipping address
+        shippingAddressSelect.addEventListener('change', function() {
+            if (sameAsShipping.checked) {
+                // Keep billing in sync with shipping when checkbox is checked
+                billingAddressSelect.value = this.value;
+            }
+        });
+    });
+</script>
+{% endblock %}
