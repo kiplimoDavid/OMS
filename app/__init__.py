@@ -29,6 +29,10 @@ def format_currency(value):
 def create_app(config_class=Config):
     app = Flask(__name__)
 
+    # Ensure instance folder exists (required for SQLite on Render)
+    os.makedirs(os.path.join(app.root_path, 'instance'), exist_ok=True)
+
+
     env = os.getenv("FLASK_ENV", "development")
     app.config.from_object(config[env])
 
