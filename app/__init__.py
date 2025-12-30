@@ -95,7 +95,7 @@ def create_app(config_class=Config):
     app.register_blueprint(support_bp, url_prefix='/support')
 
 
-        # ─── M-PESA Payments ─────────────────────────────────────────────────────
+    # ─── M-PESA Payments ─────────────────────────────────────────────────────
     from app.mpesa.routes import bp
     app.register_blueprint(bp)
 
