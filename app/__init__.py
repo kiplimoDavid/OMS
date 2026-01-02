@@ -103,6 +103,9 @@ def create_app(config_class=Config):
     from app.mpesa.routes import bp
     app.register_blueprint(bp)
 
+    from app.mpesa.routes import bp
+    app.register_blueprint(payments_bp)
+
     
 
     # ─── Import Models ────────────────────────────────────────────────────────
