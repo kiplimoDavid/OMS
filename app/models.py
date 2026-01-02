@@ -1102,22 +1102,53 @@ class AuditLog(db.Model):
 class MpesaTransaction(db.Model):
     __tablename__ = "mpesa_transactions"
 
+    # Primary key
     id = db.Column(db.Integer, primary_key=True)
+
+    # Customer info
     phone_number = db.Column(db.String(100), nullable=False)
     amount = db.Column(db.Float, nullable=False)
 
-    merchant_request_id = db.Column(db.String(100))
-    checkout_request_id = db.Column(db.String(100))
+    # STK Push identifiers returned by Safaricom
+    merchant_request_id = db.Column(db.String(100))  # MerchantRequestID from STK push
+    checkout_request_id = db.Column(db.String(100))  # CheckoutRequestID from STK push
 
-    result_code = db.Column(db.String(100))
-    result_desc = db.Column(db.String(255))
+    # Response info from M-Pesa
+    result_code = db.Column(db.String(100))          # 0 for success, other codes for failure
+    result_desc = db.Column(db.String(255))          # Description of the result
 
-    mpesa_receipt_number = db.Column(db.String(50))
-    transaction_date = db.Column(db.String(100))
+    mpesa_receipt_number = db.Column(db.String(50))  # Receipt number from M-Pesa
+    transaction_date = db.Column(db.DateTime)        # Transaction timestamp
 
-    status = db.Column(db.String(100), default="PENDING")
+    # Transaction status
+    # Options: PENDING (initiated), SUCCESSFUL, UNSUCCESSFUL
+    status = db.Column(
+        db.Enum("PENDING", "SUCCESSFUL", "UNSUCCESSFUL", name="mpesa_status"),
+        default="PENDING",
+        nullable=False
+    )
 
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    # Record creation timestamp
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    def __repr__(self):
+        return f"<MpesaTransaction {self.phone_number} KES {self.amount} {self.status}>"
+
+    # Optional: helper method to mark transaction as successful
+    def mark_successful(self, receipt_number, transaction_datetime):
+        self.status = "SUCCESSFUL"
+        self.mpesa_receipt_number = receipt_number
+        self.transaction_date = transaction_datetime
+
+    # Optional: helper method to mark transaction as unsuccessful
+    def mark_unsuccessful(self, result_desc=None):
+        self.status = "UNSUCCESSFUL"
+        if result_desc:
+            self.result_desc = result_desc
+
+
+
+
 
 
 # ==========================
