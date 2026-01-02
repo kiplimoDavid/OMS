@@ -31,7 +31,7 @@ def _mock_stk_push(phone, amount, order_id):
     if not phone.startswith("254"):
         return _save_tx(order_id, phone, amount, "FAILED", "Invalid phone")
 
-    # Simulate YES / NO
+    # Simulate YES / NO (customer accepting payment)
     user_accepts = random.choice([True, False])
 
     if not user_accepts:
@@ -109,10 +109,10 @@ def _production_stk_push(phone, amount, order_id):
     # 4. Save response
     tx = MpesaTransaction(
         order_id=order_id,
-        phone=phone,
+        phone_number=phone,
         amount=amount,
         status="PENDING",
-        reference=response_data.get("CheckoutRequestID")
+        checkout_request_id=response_data.get("CheckoutRequestID")
     )
 
     db.session.add(tx)
@@ -127,16 +127,14 @@ def _production_stk_push(phone, amount, order_id):
 # -------------------------------------------------------------
 
 
-# -------------------------------------------------------------
-
-
+# ---------------- TRANSACTION SAVE ----------------
 def _save_tx(order_id, phone, amount, status, message, receipt=None):
     tx = MpesaTransaction(
         order_id=order_id,
-        phone=phone,
+        phone_number=phone,
         amount=amount,
         status=status,
-        reference=receipt or message,
+        mpesa_receipt_number=receipt or message,
         created_at=datetime.utcnow()
     )
     db.session.add(tx)
@@ -147,4 +145,3 @@ def _save_tx(order_id, phone, amount, status, message, receipt=None):
         "message": message,
         "reference": receipt
     }
-
