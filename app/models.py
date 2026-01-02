@@ -1146,11 +1146,6 @@ class MpesaTransaction(db.Model):
         if result_desc:
             self.result_desc = result_desc
 
-
-
-
-
-
 # ==========================
 # Login Manager Hook
 # ==========================
