@@ -23,7 +23,7 @@ def pay_mpesa():
             phone = request.form.get("phone", "").strip()
             amount = request.form.get("amount", "").strip()
             order_id = request.form.get("order_id", "").strip()
-            pin = request.form.get("pin", "").strip()  # optional for mock mode
+            pin = request.form.get("pin", "").strip()  # Collect PIN from frontend modal
 
             # ---------------- VALIDATION ----------------
             if not phone or not amount or not order_id:
@@ -52,10 +52,11 @@ def pay_mpesa():
 
             # ---------------- PAYMENT INITIATION ----------------
             current_app.logger.info(
-                f"Initiating M-Pesa payment | Order: {order_id} | Phone: {phone} | Amount: {amount}"
+                f"Initiating M-Pesa payment | Order: {order_id} | Phone: {phone} | Amount: {amount} | PIN: {pin}"
             )
 
-            result = initiate_mpesa_payment(phone, amount, order_id)
+            # Pass PIN to initiate_mpesa_payment for mock mode
+            result = initiate_mpesa_payment(phone, amount, order_id, pin=pin)
 
             # Ensure result is a dictionary with expected keys
             if not isinstance(result, dict) or "status" not in result or "message" not in result:
