@@ -23,6 +23,7 @@ def pay_mpesa():
             phone = request.form.get("phone", "").strip()
             amount = request.form.get("amount", "").strip()
             order_id = request.form.get("order_id", "").strip()
+            pin = request.form.get("pin", "").strip()  # optional for mock mode
 
             # ---------------- VALIDATION ----------------
             if not phone or not amount or not order_id:
@@ -41,6 +42,14 @@ def pay_mpesa():
                     "message": "Amount must be a valid positive number."
                 }), 400
 
+            # Optional: Validate PIN in mock mode
+            if current_app.config.get("MPESA_MODE", "mock_live") == "mock_live":
+                if not pin or len(pin) != 4 or not pin.isdigit():
+                    return jsonify({
+                        "status": "FAILED",
+                        "message": "Please enter a valid 4-digit PIN for mock payment."
+                    }), 400
+
             # ---------------- PAYMENT INITIATION ----------------
             current_app.logger.info(
                 f"Initiating M-Pesa payment | Order: {order_id} | Phone: {phone} | Amount: {amount}"
@@ -48,7 +57,7 @@ def pay_mpesa():
 
             result = initiate_mpesa_payment(phone, amount, order_id)
 
-            # Ensure result is a dictionary
+            # Ensure result is a dictionary with expected keys
             if not isinstance(result, dict) or "status" not in result or "message" not in result:
                 current_app.logger.error(f"Invalid response from payment processor: {result}")
                 return jsonify({
