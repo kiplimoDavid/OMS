@@ -1,4 +1,3 @@
-
 {% extends "base.html" %}
 
 {% block content %}
@@ -27,9 +26,13 @@
 
                         <input type="hidden" name="order_id" value="ORDER123">
 
-                        <button type="submit" class="btn btn-success w-100" id="payBtn">
+                        <button type="submit" class="btn btn-success w-100" id="payButton">
                             Pay Now
                         </button>
+
+                        <div class="spinner-border text-primary d-none mt-3" id="loadingSpinner" role="status">
+                            <span class="visually-hidden">Processing...</span>
+                        </div>
                     </form>
 
                     <div id="paymentResult" class="alert mt-3 d-none"></div>
@@ -41,34 +44,37 @@
 </div>
 
 <script>
-document.getElementById("mpesaForm").addEventListener("submit", async function (e) {
-    e.preventDefault(); // Prevent page reload
+document.getElementById("mpesaForm").addEventListener("submit", function (e) {
+    e.preventDefault();
 
-    const payBtn = document.getElementById("payBtn");
+    const form = this;
+    const formData = new FormData(form);
+    const payButton = document.getElementById("payButton");
+    const spinner = document.getElementById("loadingSpinner");
     const resultDiv = document.getElementById("paymentResult");
 
-    // Disable button to prevent multiple clicks
-    payBtn.disabled = true;
-    payBtn.innerText = "Processing...";
-
-    // Hide previous result
+    // Reset previous messages
     resultDiv.classList.add("d-none");
     resultDiv.classList.remove("alert-success", "alert-danger", "alert-warning");
-    resultDiv.innerText = "";
 
-    const formData = new FormData(this);
+    // Show loading
+    payButton.disabled = true;
+    spinner.classList.remove("d-none");
 
-    try {
-        const response = await fetch("/payments/mpesa", {
-            method: "POST",
-            body: formData
-        });
+    fetch("/payments/mpesa", {
+        method: "POST",
+        body: formData
+    })
+    .then(async response => {
+        let data;
+        try {
+            data = await response.json();
+        } catch {
+            throw new Error("Invalid server response");
+        }
 
-        // Check if server returned JSON
-        const data = await response.json();
-
-        // Show the result
         resultDiv.classList.remove("d-none");
+
         if (data.status === "SUCCESS") {
             resultDiv.classList.add("alert-success");
         } else if (data.status === "PENDING") {
@@ -77,19 +83,19 @@ document.getElementById("mpesaForm").addEventListener("submit", async function (
             resultDiv.classList.add("alert-danger");
         }
 
-        resultDiv.innerText = data.message;
-
-    } catch (err) {
-        // Handle fetch or network errors
+        resultDiv.innerText = data.message || "Payment request failed";
+    })
+    .catch(err => {
         resultDiv.classList.remove("d-none");
         resultDiv.classList.add("alert-danger");
         resultDiv.innerText = "Payment request failed. Please try again.";
-        console.error("Payment request failed:", err);
-    } finally {
-        // Re-enable button
-        payBtn.disabled = false;
-        payBtn.innerText = "Pay Now";
-    }
+        console.error("M-Pesa request error:", err);
+    })
+    .finally(() => {
+        // Reset button and spinner
+        payButton.disabled = false;
+        spinner.classList.add("d-none");
+    });
 });
 </script>
 {% endblock %}
