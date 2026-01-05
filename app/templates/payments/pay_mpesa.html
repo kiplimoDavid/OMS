@@ -1,67 +1,74 @@
 {% extends "base.html" %}
+
 {% block content %}
-
 <div class="container mt-5">
-  <div class="row justify-content-center">
-    <div class="col-md-6">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
 
-      <div class="card shadow">
-        <div class="card-header bg-success text-white text-center">
-          <h5>M-Pesa Payment</h5>
-        </div>
+            <div class="card shadow">
+                <div class="card-header text-center">
+                    <h4>M-Pesa Payment</h4>
+                </div>
 
-        <div class="card-body">
-          <form id="mpesaForm">
-            <input type="hidden" name="order_id" value="{{ order_id }}">
-            <input type="hidden" name="amount" value="{{ total }}">
+                <div class="card-body">
+                    <form id="mpesaForm">
+                        <div class="mb-3">
+                            <label class="form-label">M-Pesa Phone Number</label>
+                            <input type="text" class="form-control" name="phone"
+                                   placeholder="2547XXXXXXXX" required>
+                        </div>
 
-            <div class="mb-3">
-              <label class="form-label">M-Pesa Number</label>
-              <input type="text"
-                     name="phone"
-                     class="form-control"
-                     placeholder="2547XXXXXXXX"
-                     required>
+                        <div class="mb-3">
+                            <label class="form-label">Amount (KES)</label>
+                            <input type="number" class="form-control" name="amount"
+                                   step="0.01" required>
+                        </div>
+
+                        <input type="hidden" name="order_id" value="ORDER123">
+
+                        <button type="submit" class="btn btn-success w-100">
+                            Pay Now
+                        </button>
+                    </form>
+
+                    <div id="paymentResult" class="alert mt-3 d-none"></div>
+                </div>
             </div>
 
-            <div class="alert alert-info text-center">
-              Pay <strong>KES {{ total }}</strong> to
-              <strong>ACME Company</strong>
-            </div>
-
-            <button class="btn btn-success w-100" type="submit">
-              Pay Now
-            </button>
-          </form>
-
-          <div id="response" class="mt-3 text-center"></div>
         </div>
-      </div>
-
     </div>
-  </div>
 </div>
 
 <script>
-document.getElementById("mpesaForm").onsubmit = async function(e) {
-  e.preventDefault();
+document.getElementById("mpesaForm").addEventListener("submit", function (e) {
+    e.preventDefault(); // ⛔ prevent page reload
 
-  const form = e.target;
-  const responseDiv = document.getElementById("response");
+    const formData = new FormData(this);
 
-  const res = await fetch("/payments/mpesa", {
-    method: "POST",
-    body: new FormData(form)
-  });
+    fetch("/payments/mpesa", {
+        method: "POST",
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        const resultDiv = document.getElementById("paymentResult");
+        resultDiv.classList.remove("d-none");
+        resultDiv.classList.remove("alert-success", "alert-danger", "alert-warning");
 
-  const data = await res.json();
+        if (data.status === "SUCCESS") {
+            resultDiv.classList.add("alert-success");
+        } else if (data.status === "PENDING") {
+            resultDiv.classList.add("alert-warning");
+        } else {
+            resultDiv.classList.add("alert-danger");
+        }
 
-  responseDiv.innerHTML = `
-    <div class="alert alert-${data.status === 'SUCCESS' ? 'success' : 'danger'}">
-      ${data.message}
-    </div>`;
-};
+        resultDiv.innerText = data.message;
+    })
+    .catch(err => {
+        alert("Payment request failed");
+        console.error(err);
+    });
+});
 </script>
-
 {% endblock %}
-
