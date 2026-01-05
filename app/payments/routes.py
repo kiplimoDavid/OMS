@@ -17,7 +17,6 @@ def pay_mpesa():
         - Initiates M-Pesa payment (mock_live or production)
         - Returns JSON response
     """
-
     if request.method == "POST":
         try:
             # ---------------- INPUT COLLECTION ----------------
@@ -49,12 +48,19 @@ def pay_mpesa():
 
             result = initiate_mpesa_payment(phone, amount, order_id)
 
+            # Ensure result is a dictionary
+            if not isinstance(result, dict) or "status" not in result or "message" not in result:
+                current_app.logger.error(f"Invalid response from payment processor: {result}")
+                return jsonify({
+                    "status": "FAILED",
+                    "message": "Payment request failed. Please try again."
+                }), 500
+
             return jsonify(result), 200
 
         except Exception as e:
             # ---------------- ERROR HANDLING ----------------
-            current_app.logger.error(f"M-Pesa payment error: {str(e)}")
-
+            current_app.logger.error(f"M-Pesa payment error: {str(e)}", exc_info=True)
             return jsonify({
                 "status": "FAILED",
                 "message": "An internal error occurred while processing payment."
