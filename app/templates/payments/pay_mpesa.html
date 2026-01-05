@@ -8,6 +8,7 @@
             <div class="card shadow">
                 <div class="card-header text-center">
                     <h4>M-Pesa Payment</h4>
+                    <small class="text-muted">Mode: {{ mpesa_mode }}</small>
                 </div>
 
                 <div class="card-body">
@@ -64,7 +65,7 @@
         <h5 class="modal-title">Enter M-Pesa PIN</h5>
       </div>
       <div class="modal-body">
-        <input type="password" id="mpesaPin" class="form-control" placeholder="Enter your PIN" maxlength="4">
+        <input type="password" id="mpesaPin" class="form-control" placeholder="Enter your 4-digit PIN" maxlength="4">
       </div>
       <div class="modal-footer">
         <button type="button" id="submitPin" class="btn btn-success">Submit</button>
@@ -96,14 +97,18 @@ document.getElementById("mpesaForm").addEventListener("submit", function (e) {
         pinModal.show();
 
         document.getElementById("submitPin").onclick = function () {
-            const pin = document.getElementById("mpesaPin").value;
-            if (pin.length !== 4) {
+            const pin = document.getElementById("mpesaPin").value.trim();
+            if (pin.length !== 4 || isNaN(pin)) {
                 alert("Please enter a valid 4-digit PIN.");
                 return;
             }
+
             pinModal.hide();
 
-            // ------------------- Simulate Payment -------------------
+            // Append PIN to FormData before sending
+            formData.append("pin", pin);
+
+            // ------------------- Payment Request -------------------
             fetch("/payments/mpesa", {
                 method: "POST",
                 body: formData
@@ -125,7 +130,11 @@ document.getElementById("mpesaForm").addEventListener("submit", function (e) {
                 resultDiv.innerText = data.message;
             })
             .catch(err => {
-                alert("Payment request failed. Please try again.");
+                const resultDiv = document.getElementById("paymentResult");
+                resultDiv.classList.remove("d-none");
+                resultDiv.classList.remove("alert-success", "alert-warning");
+                resultDiv.classList.add("alert-danger");
+                resultDiv.innerText = "Payment request failed. Please try again.";
                 console.error(err);
             });
         };
