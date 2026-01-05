@@ -26,13 +26,9 @@
 
                         <input type="hidden" name="order_id" value="ORDER123">
 
-                        <button type="submit" class="btn btn-success w-100" id="payButton">
+                        <button type="submit" class="btn btn-success w-100">
                             Pay Now
                         </button>
-
-                        <div class="spinner-border text-primary d-none mt-3" id="loadingSpinner" role="status">
-                            <span class="visually-hidden">Processing...</span>
-                        </div>
                     </form>
 
                     <div id="paymentResult" class="alert mt-3 d-none"></div>
@@ -43,59 +39,106 @@
     </div>
 </div>
 
+<!-- ----------------- Confirmation Modal ----------------- -->
+<div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirm Payment</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="confirmMessage"></div>
+      <div class="modal-footer">
+        <button type="button" id="confirmYes" class="btn btn-success">YES</button>
+        <button type="button" id="confirmNo" class="btn btn-danger" data-bs-dismiss="modal">NO</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ----------------- PIN Modal ----------------- -->
+<div class="modal fade" id="pinModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Enter M-Pesa PIN</h5>
+      </div>
+      <div class="modal-body">
+        <input type="password" id="mpesaPin" class="form-control" placeholder="Enter your PIN" maxlength="4">
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="submitPin" class="btn btn-success">Submit</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 document.getElementById("mpesaForm").addEventListener("submit", function (e) {
-    e.preventDefault();
+    e.preventDefault(); // prevent page reload
 
-    const form = this;
-    const formData = new FormData(form);
-    const payButton = document.getElementById("payButton");
-    const spinner = document.getElementById("loadingSpinner");
-    const resultDiv = document.getElementById("paymentResult");
+    const formData = new FormData(this);
+    const phone = formData.get("phone");
+    const amount = formData.get("amount");
 
-    // Reset previous messages
-    resultDiv.classList.add("d-none");
-    resultDiv.classList.remove("alert-success", "alert-danger", "alert-warning");
+    // ------------------- Confirmation Modal -------------------
+    const confirmMessage = document.getElementById("confirmMessage");
+    confirmMessage.innerText = `Do you want to pay ACME Company KES ${parseFloat(amount).toFixed(2)}?`;
 
-    // Show loading
-    payButton.disabled = true;
-    spinner.classList.remove("d-none");
+    const confirmModal = new bootstrap.Modal(document.getElementById("confirmModal"));
+    confirmModal.show();
 
-    fetch("/payments/mpesa", {
-        method: "POST",
-        body: formData
-    })
-    .then(async response => {
-        let data;
-        try {
-            data = await response.json();
-        } catch {
-            throw new Error("Invalid server response");
-        }
+    document.getElementById("confirmYes").onclick = function () {
+        confirmModal.hide();
 
+        // ------------------- PIN Modal -------------------
+        const pinModal = new bootstrap.Modal(document.getElementById("pinModal"));
+        pinModal.show();
+
+        document.getElementById("submitPin").onclick = function () {
+            const pin = document.getElementById("mpesaPin").value;
+            if (pin.length !== 4) {
+                alert("Please enter a valid 4-digit PIN.");
+                return;
+            }
+            pinModal.hide();
+
+            // ------------------- Simulate Payment -------------------
+            fetch("/payments/mpesa", {
+                method: "POST",
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                const resultDiv = document.getElementById("paymentResult");
+                resultDiv.classList.remove("d-none");
+                resultDiv.classList.remove("alert-success", "alert-danger", "alert-warning");
+
+                if (data.status === "SUCCESS") {
+                    resultDiv.classList.add("alert-success");
+                } else if (data.status === "PENDING") {
+                    resultDiv.classList.add("alert-warning");
+                } else {
+                    resultDiv.classList.add("alert-danger");
+                }
+
+                resultDiv.innerText = data.message;
+            })
+            .catch(err => {
+                alert("Payment request failed. Please try again.");
+                console.error(err);
+            });
+        };
+    };
+
+    document.getElementById("confirmNo").onclick = function () {
+        confirmModal.hide();
+        const resultDiv = document.getElementById("paymentResult");
         resultDiv.classList.remove("d-none");
-
-        if (data.status === "SUCCESS") {
-            resultDiv.classList.add("alert-success");
-        } else if (data.status === "PENDING") {
-            resultDiv.classList.add("alert-warning");
-        } else {
-            resultDiv.classList.add("alert-danger");
-        }
-
-        resultDiv.innerText = data.message || "Payment request failed";
-    })
-    .catch(err => {
-        resultDiv.classList.remove("d-none");
+        resultDiv.classList.remove("alert-success", "alert-danger", "alert-warning");
         resultDiv.classList.add("alert-danger");
-        resultDiv.innerText = "Payment request failed. Please try again.";
-        console.error("M-Pesa request error:", err);
-    })
-    .finally(() => {
-        // Reset button and spinner
-        payButton.disabled = false;
-        spinner.classList.add("d-none");
-    });
+        resultDiv.innerText = "Payment cancelled by customer.";
+    };
 });
 </script>
 {% endblock %}
