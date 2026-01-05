@@ -1,3 +1,4 @@
+
 {% extends "base.html" %}
 
 {% block content %}
@@ -26,7 +27,7 @@
 
                         <input type="hidden" name="order_id" value="ORDER123">
 
-                        <button type="submit" class="btn btn-success w-100">
+                        <button type="submit" class="btn btn-success w-100" id="payBtn">
                             Pay Now
                         </button>
                     </form>
@@ -40,21 +41,34 @@
 </div>
 
 <script>
-document.getElementById("mpesaForm").addEventListener("submit", function (e) {
-    e.preventDefault(); // ⛔ prevent page reload
+document.getElementById("mpesaForm").addEventListener("submit", async function (e) {
+    e.preventDefault(); // Prevent page reload
+
+    const payBtn = document.getElementById("payBtn");
+    const resultDiv = document.getElementById("paymentResult");
+
+    // Disable button to prevent multiple clicks
+    payBtn.disabled = true;
+    payBtn.innerText = "Processing...";
+
+    // Hide previous result
+    resultDiv.classList.add("d-none");
+    resultDiv.classList.remove("alert-success", "alert-danger", "alert-warning");
+    resultDiv.innerText = "";
 
     const formData = new FormData(this);
 
-    fetch("/payments/mpesa", {
-        method: "POST",
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        const resultDiv = document.getElementById("paymentResult");
-        resultDiv.classList.remove("d-none");
-        resultDiv.classList.remove("alert-success", "alert-danger", "alert-warning");
+    try {
+        const response = await fetch("/payments/mpesa", {
+            method: "POST",
+            body: formData
+        });
 
+        // Check if server returned JSON
+        const data = await response.json();
+
+        // Show the result
+        resultDiv.classList.remove("d-none");
         if (data.status === "SUCCESS") {
             resultDiv.classList.add("alert-success");
         } else if (data.status === "PENDING") {
@@ -64,11 +78,18 @@ document.getElementById("mpesaForm").addEventListener("submit", function (e) {
         }
 
         resultDiv.innerText = data.message;
-    })
-    .catch(err => {
-        alert("Payment request failed");
-        console.error(err);
-    });
+
+    } catch (err) {
+        // Handle fetch or network errors
+        resultDiv.classList.remove("d-none");
+        resultDiv.classList.add("alert-danger");
+        resultDiv.innerText = "Payment request failed. Please try again.";
+        console.error("Payment request failed:", err);
+    } finally {
+        // Re-enable button
+        payBtn.disabled = false;
+        payBtn.innerText = "Pay Now";
+    }
 });
 </script>
 {% endblock %}
