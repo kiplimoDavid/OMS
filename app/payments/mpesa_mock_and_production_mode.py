@@ -4,14 +4,16 @@ from flask import current_app
 from app import db
 from app.models import MpesaTransaction
 
-def initiate_mpesa_payment(phone, amount, order_id):
+
+def initiate_mpesa_payment(phone, amount, order_id, pin=None):
     """
-    Entry point used by routes
+    Entry point used by routes.
+    `pin` is required for mock mode.
     """
     mode = current_app.config.get("MPESA_MODE", "mock_live")
 
     if mode == "mock_live":
-        return _mock_stk_push(phone, amount, order_id)
+        return _mock_stk_push(phone, amount, order_id, pin)
 
     # ================= PRODUCTION MODE (COMMENTED) =================
     # elif mode == "production":
@@ -22,38 +24,34 @@ def initiate_mpesa_payment(phone, amount, order_id):
 
 
 # ---------------- MOCK MODE ----------------
-def _mock_stk_push(phone, amount, order_id):
+def _mock_stk_push(phone, amount, order_id, pin):
     """
-    Simulated STK Push for mock_live mode.
-    Mimics real M-Pesa flow:
-      1. Prompt user to accept payment
-      2. Ask for confirmation (1=YES, 2=NO)
-      3. Check balance
-      4. Complete transaction
+    Fully simulated STK Push requiring PIN.
     """
 
+    # Validate phone number
     if not phone.startswith("254"):
-        return _save_tx(order_id, phone, amount, "FAILED", "Invalid phone")
+        return _save_tx(order_id, phone, amount, "FAILED", "Invalid phone number")
 
-    # Prompt user
-    prompt_message = f"Do you want to pay ACME Company KES {amount:.2f}? Reply 1 for YES, 2 for NO."
-    print(f"[MOCK STK] Prompt to user ({phone}): {prompt_message}")
+    # Validate PIN
+    if not pin or len(pin) != 4 or not pin.isdigit():
+        return _save_tx(order_id, phone, amount, "FAILED", "Invalid PIN entered")
 
-    # Simulate user response (1=YES, 2=NO)
-    user_response = random.choice([1, 2])
-    print(f"[MOCK STK] User response: {user_response}")
+    # Simulate customer acceptance (YES / NO)
+    user_accepts = random.choice([True, False])
 
-    if user_response != 1:
+    if not user_accepts:
         return _save_tx(order_id, phone, amount, "CANCELLED",
                         "Customer declined payment")
 
     # Simulate balance check
-    has_balance = random.choice([True, True, False])  # 66% chance sufficient balance
+    has_balance = random.choice([True, True, False])  # Higher chance of success
+
     if not has_balance:
         return _save_tx(order_id, phone, amount, "FAILED",
                         "Insufficient M-Pesa balance")
 
-    # Success
+    # Payment success
     receipt = f"MOCK{random.randint(100000, 999999)}"
     return _save_tx(order_id, phone, amount, "SUCCESS",
                     "Payment successful", receipt)
@@ -70,9 +68,7 @@ def _production_stk_push(phone, amount, order_id):
     consumer_key = current_app.config.get("MPESA_CONSUMER_KEY")
     consumer_secret = current_app.config.get("MPESA_CONSUMER_SECRET")
 
-    auth = base64.b64encode(
-        f"{consumer_key}:{consumer_secret}".encode()
-    ).decode()
+    auth = base64.b64encode(f"{consumer_key}:{consumer_secret}".encode()).decode()
 
     token_response = requests.get(
         "https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials",
@@ -86,9 +82,7 @@ def _production_stk_push(phone, amount, order_id):
     passkey = current_app.config.get("MPESA_PASSKEY")
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
 
-    password = base64.b64encode(
-        f"{shortcode}{passkey}{timestamp}".encode()
-    ).decode()
+    password = base64.b64encode(f"{shortcode}{passkey}{timestamp}".encode()).decode()
 
     payload = {
         "BusinessShortCode": shortcode,
