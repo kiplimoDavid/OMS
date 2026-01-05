@@ -4,11 +4,15 @@ from flask import current_app
 from app import db
 from app.models import MpesaTransaction
 
-
 def initiate_mpesa_payment(phone, amount, order_id, pin=None):
     """
-    Entry point used by routes.
-    `pin` is required for mock mode.
+    Entry point for M-Pesa payment called by routes.
+
+    Args:
+        phone (str): Customer phone number (e.g., 2547XXXXXXXX)
+        amount (float): Payment amount in KES
+        order_id (str): Order identifier
+        pin (str, optional): Customer M-Pesa PIN for mock simulation
     """
     mode = current_app.config.get("MPESA_MODE", "mock_live")
 
@@ -24,35 +28,47 @@ def initiate_mpesa_payment(phone, amount, order_id, pin=None):
 
 
 # ---------------- MOCK MODE ----------------
-def _mock_stk_push(phone, amount, order_id, pin):
+def _mock_stk_push(phone, amount, order_id, pin=None):
     """
-    Fully simulated STK Push requiring PIN.
+    Simulated STK Push for mock_live mode.
+    Mimics real M-Pesa flow:
+      1. Prompt user to accept payment
+      2. Confirm payment
+      3. Check balance
+      4. Require PIN
+      5. Complete transaction
     """
 
-    # Validate phone number
     if not phone.startswith("254"):
         return _save_tx(order_id, phone, amount, "FAILED", "Invalid phone number")
 
-    # Validate PIN
-    if not pin or len(pin) != 4 or not pin.isdigit():
-        return _save_tx(order_id, phone, amount, "FAILED", "Invalid PIN entered")
+    # 1️⃣ Prompt user confirmation
+    prompt_message = f"Do you want to pay ACME Company KES {amount:.2f}? Reply 1 for YES, 2 for NO."
+    print(f"[MOCK STK] Prompt to user ({phone}): {prompt_message}")
 
-    # Simulate customer acceptance (YES / NO)
-    user_accepts = random.choice([True, False])
+    # Simulate user confirmation
+    user_response = random.choice([1, 2])
+    print(f"[MOCK STK] User response: {user_response}")
 
-    if not user_accepts:
+    if user_response != 1:
         return _save_tx(order_id, phone, amount, "CANCELLED",
                         "Customer declined payment")
 
-    # Simulate balance check
-    has_balance = random.choice([True, True, False])  # Higher chance of success
-
+    # 2️⃣ Balance simulation
+    has_balance = random.choice([True, True, False])  # 66% chance sufficient balance
     if not has_balance:
         return _save_tx(order_id, phone, amount, "FAILED",
                         "Insufficient M-Pesa balance")
 
-    # Payment success
+    # 3️⃣ PIN simulation
+    if pin is None or len(pin) != 4 or not pin.isdigit():
+        return _save_tx(order_id, phone, amount, "FAILED",
+                        "Invalid or missing PIN")
+
+    # 4️⃣ Successful transaction
     receipt = f"MOCK{random.randint(100000, 999999)}"
+    print(f"[MOCK STK] Payment successful for {phone}, Receipt: {receipt}")
+
     return _save_tx(order_id, phone, amount, "SUCCESS",
                     "Payment successful", receipt)
 
@@ -64,7 +80,7 @@ import requests
 from datetime import datetime
 
 def _production_stk_push(phone, amount, order_id):
-    # 1. Get access token
+    # 1️⃣ Get access token
     consumer_key = current_app.config.get("MPESA_CONSUMER_KEY")
     consumer_secret = current_app.config.get("MPESA_CONSUMER_SECRET")
 
@@ -77,7 +93,7 @@ def _production_stk_push(phone, amount, order_id):
 
     access_token = token_response.json().get("access_token")
 
-    # 2. Prepare STK payload
+    # 2️⃣ Prepare STK payload
     shortcode = current_app.config.get("MPESA_SHORTCODE")
     passkey = current_app.config.get("MPESA_PASSKEY")
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
@@ -98,7 +114,7 @@ def _production_stk_push(phone, amount, order_id):
         "TransactionDesc": "OMS Payment"
     }
 
-    # 3. Call Safaricom STK endpoint
+    # 3️⃣ Call Safaricom STK endpoint
     stk_response = requests.post(
         "https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest",
         json=payload,
@@ -107,7 +123,7 @@ def _production_stk_push(phone, amount, order_id):
 
     response_data = stk_response.json()
 
-    # 4. Save response
+    # 4️⃣ Save response
     tx = MpesaTransaction(
         order_id=order_id,
         phone_number=phone,
@@ -130,6 +146,9 @@ def _production_stk_push(phone, amount, order_id):
 
 # ---------------- TRANSACTION SAVE ----------------
 def _save_tx(order_id, phone, amount, status, message, receipt=None):
+    """
+    Save transaction to the database
+    """
     tx = MpesaTransaction(
         order_id=order_id,
         phone_number=phone,
